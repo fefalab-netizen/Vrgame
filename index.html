@@ -180,41 +180,39 @@
       <a-text value="a nave that refuses to close" align="center" position="0 2.26 -3.2" width="3.6" color="#6a736c"></a-text>
     </a-entity>
 
-    <a-entity id="slate" visible="false">
-      <a-plane width="1.28" height="0.56" material="shader: flat; color: #0c0e10; opacity: 0.93; transparent: true"></a-plane>
-      <a-text id="slate-title" value="" align="center" position="0 0.16 0.01" width="1.18" color="#b7c4b0"></a-text>
-      <a-text id="slate-body" value="" align="center" position="0 -0.05 0.01" width="1.14" wrap-count="36" color="#b0b6b2"></a-text>
-    </a-entity>
-
     <a-entity id="rig" position="0 0 0">
       <a-camera id="cam" look-controls="pointerLockEnabled: true" wasd-controls="enabled: false" position="0 1.6 0">
         <a-entity
           cursor="fuse: false; rayOrigin: mouse"
-          raycaster="objects: .clickable; far: 10; interval: 80"
+          raycaster="objects: .clickable; far: 10; interval: 50"
           pointer-interact>
           <a-ring position="0 0 -0.9" radius-inner="0.006" radius-outer="0.010"
             material="shader: flat; color: #c8d0c6; opacity: 0.7"></a-ring>
         </a-entity>
         <a-entity id="head-light" desktop-lamp>
-          <a-entity position="0 0 -6" id="head-spot-tgt"></a-entity>
           <a-light type="spot" color="#dce4d8" intensity="1.45" angle="20" penumbra="0.5"
-            distance="14" decay="1.3" rotation="90 0 0" target="#head-spot-tgt"></a-light>
+            distance="14" decay="1.3"></a-light>
+        </a-entity>
+        <a-entity id="slate" position="0 -0.05 -1.2" visible="false">
+          <a-plane class="clickable" data-id="slate" width="1.32" height="0.66"
+            material="shader: flat; color: #0c0e10; opacity: 0.94; transparent: true"></a-plane>
+          <a-text id="slate-title" value="" align="center" position="0 0.2 0.01" width="1.2" color="#b7c4b0"></a-text>
+          <a-text id="slate-body" value="" align="center" position="0 -0.02 0.01" width="1.16" wrap-count="36" color="#b0b6b2"></a-text>
+          <a-text value="point here · pull trigger to close" align="center" position="0 -0.26 0.01" width="1.1" color="#6a736c"></a-text>
         </a-entity>
       </a-camera>
 
       <a-entity id="leftHand"
         laser-controls="hand: left"
-        oculus-touch-controls="hand: left"
-        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #9aaa96; lineOpacity: 0.7"
-        hand-flashlight="hand: left; color: #dce6d6; intensity: 2.2"
+        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        hand-flashlight="hand: left; color: #dce6d6; intensity: 2.4"
         pointer-interact>
       </a-entity>
 
       <a-entity id="rightHand"
         laser-controls="hand: right"
-        oculus-touch-controls="hand: right"
-        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #9aaa96; lineOpacity: 0.7"
-        hand-flashlight="hand: right; color: #e4ece2; intensity: 2.2"
+        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        hand-flashlight="hand: right; color: #e4ece2; intensity: 2.4"
         pointer-interact>
       </a-entity>
     </a-entity>
@@ -344,61 +342,36 @@
       document.querySelector('#tex-door').src = paintIron(512, 1024, 13);
     }
 
-    /* Spotlights in A-Frame/Three.js aim down (-Y). Rotate +90 X so -Y becomes -Z,
-       matching laser-controls. A child target on -Z keeps the aim locked to the pointer. */
+    /* Drive the spotlight from the SAME ray the laser uses, every frame. */
     AFRAME.registerComponent('hand-flashlight', {
       schema: {
         hand: { type: 'string' },
         color: { type: 'color', default: '#dce6d6' },
-        intensity: { type: 'number', default: 2.2 }
+        intensity: { type: 'number', default: 2.4 }
       },
       init: function () {
         this.base = this.data.intensity;
         this.focused = false;
         this.flicker = 1;
-
-        const tid = 'spot-tgt-' + this.data.hand;
-        const target = document.createElement('a-entity');
-        target.setAttribute('id', tid);
-        target.setAttribute('position', '0 0 -8');
-        this.el.appendChild(target);
+        this._fallbackDir = new THREE.Vector3();
+        this._fallbackOrigin = new THREE.Vector3();
 
         const light = document.createElement('a-light');
         light.setAttribute('type', 'spot');
         light.setAttribute('color', this.data.color);
         light.setAttribute('intensity', this.base);
-        light.setAttribute('angle', 16);
-        light.setAttribute('penumbra', 0.42);
+        light.setAttribute('angle', 15);
+        light.setAttribute('penumbra', 0.4);
         light.setAttribute('distance', 16);
-        light.setAttribute('decay', 1.25);
-        light.setAttribute('rotation', '90 0 0');
-        light.setAttribute('target', '#' + tid);
+        light.setAttribute('decay', 1.15);
         this.el.appendChild(light);
-        this.light = light;
-
-        const body = document.createElement('a-cylinder');
-        body.setAttribute('radius', 0.018);
-        body.setAttribute('height', 0.09);
-        body.setAttribute('rotation', '90 0 0');
-        body.setAttribute('position', '0 0 -0.04');
-        body.setAttribute('material', 'color: #16181a; roughness: 0.65; metalness: 0.45');
-        this.el.appendChild(body);
+        this.lightEl = light;
 
         const lens = document.createElement('a-sphere');
-        lens.setAttribute('radius', 0.02);
-        lens.setAttribute('position', '0 0 -0.09');
+        lens.setAttribute('radius', 0.018);
+        lens.setAttribute('position', '0 0 0');
         lens.setAttribute('material', 'shader: flat; color: #e8f0e4; emissive: #c8d8c4; emissiveIntensity: 3');
         this.el.appendChild(lens);
-
-        const beam = document.createElement('a-cone');
-        beam.setAttribute('radius-top', 0.38);
-        beam.setAttribute('radius-bottom', 0.012);
-        beam.setAttribute('height', 1.85);
-        beam.setAttribute('position', '0 0 -1.02');
-        beam.setAttribute('rotation', '-90 0 0');
-        beam.setAttribute('material', 'shader: flat; color: #d0ddd0; opacity: 0.055; transparent: true; side: double; depthWrite: false');
-        this.el.appendChild(beam);
-        this.beam = beam;
 
         const on = () => { this.focused = true; };
         const off = () => { this.focused = false; };
@@ -408,14 +381,34 @@
         this.el.addEventListener('gripup', off);
       },
       tick: function (t) {
-        if (!this.light) return;
-        if (Math.random() < 0.0035) this.flicker = 0.28 + Math.random() * 0.25;
+        const threeLight = this.lightEl && this.lightEl.getObject3D('light');
+        if (!threeLight) return;
+
+        if (Math.random() < 0.0035) this.flicker = 0.3 + Math.random() * 0.25;
         else this.flicker += (1 - this.flicker) * 0.1;
         const wobble = 1 + Math.sin(t * 0.008 + (this.data.hand === 'left' ? 0 : 1.7)) * 0.02;
-        const target = this.focused ? this.base * 1.7 : this.base;
-        this.light.setAttribute('intensity', target * this.flicker * wobble);
-        this.light.setAttribute('angle', this.focused ? 10 : 16);
-        if (this.beam) this.beam.setAttribute('material', 'opacity', this.focused ? 0.09 : 0.05);
+        threeLight.intensity = (this.focused ? this.base * 1.65 : this.base) * this.flicker * wobble;
+        threeLight.angle = THREE.MathUtils.degToRad(this.focused ? 9 : 15);
+
+        let origin, dir;
+        const rc = this.el.components.raycaster;
+        if (rc && rc.raycaster && rc.raycaster.ray) {
+          origin = rc.raycaster.ray.origin;
+          dir = rc.raycaster.ray.direction;
+        } else {
+          this.el.object3D.getWorldPosition(this._fallbackOrigin);
+          this.el.object3D.getWorldDirection(this._fallbackDir);
+          origin = this._fallbackOrigin;
+          dir = this._fallbackDir.multiplyScalar(-1);
+        }
+
+        if (!threeLight.target.parent) this.el.sceneEl.object3D.add(threeLight.target);
+        threeLight.target.position.set(
+          origin.x + dir.x * 12,
+          origin.y + dir.y * 12,
+          origin.z + dir.z * 12
+        );
+        threeLight.target.updateMatrixWorld();
       }
     });
 
@@ -445,10 +438,17 @@
         const fire = () => {
           const now = performance.now();
           if (now - this._lock < 280) return;
+          const slate = document.querySelector('#slate');
+          const slateOn = slate && slate.getAttribute('visible') !== false && slate.object3D.visible;
           const rc = this.el.components.raycaster;
-          if (!rc) return;
-          const hits = rc.intersections;
-          if (!hits || !hits.length) return;
+          const hits = rc && rc.intersections;
+          if (!hits || !hits.length) {
+            if (slateOn) {
+              this._lock = now;
+              hideSlate();
+            }
+            return;
+          }
           let el = hits[0].object.el;
           if (!el) return;
           while (el && !el.classList.contains('clickable')) el = el.parentEl;
@@ -469,34 +469,28 @@
           const h = document.getElementById('hint');
           if (h) h.textContent = 'Aim the lamp. When a thing brightens, pull trigger.';
         });
-      },
-      tick: function () {
-        const slate = document.querySelector('#slate');
-        const cam = document.querySelector('#cam');
-        if (!slate || !cam || slate.getAttribute('visible') === false) return;
-        const obj = cam.object3D;
-        const pos = new THREE.Vector3();
-        const dir = new THREE.Vector3();
-        obj.getWorldPosition(pos);
-        obj.getWorldDirection(dir);
-        pos.add(dir.multiplyScalar(-1.2));
-        slate.object3D.position.copy(pos);
-        slate.object3D.quaternion.copy(obj.getWorldQuaternion(new THREE.Quaternion()));
       }
     });
+
+    function hideSlate() {
+      const slate = document.querySelector('#slate');
+      if (slate) slate.setAttribute('visible', false);
+      clearTimeout(window._slateTimer);
+    }
 
     function showSlate(title, body) {
       document.querySelector('#slate-title').setAttribute('value', title);
       document.querySelector('#slate-body').setAttribute('value', body);
       document.querySelector('#slate').setAttribute('visible', true);
       clearTimeout(window._slateTimer);
-      window._slateTimer = setTimeout(() => {
-        document.querySelector('#slate').setAttribute('visible', false);
-      }, 8000);
     }
 
     function useHotspot(id, el) {
       if (!id) return;
+      if (id === 'slate') {
+        hideSlate();
+        return;
+      }
       tickSound();
       if (id === 'stone') {
         Game.hasKey = true;
