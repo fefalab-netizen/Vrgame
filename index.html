@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HOLLOW STONE — The First Vault</title>
+  <meta name="description" content="Stay-in-place WebXR horror. Point, click, both hands are flashlights.">
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #050303; overflow: hidden; }
+    #boot {
+      position: fixed; inset: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 30%, #2a1008 0%, #070303 55%, #030101 100%);
+      color: #e8d2b0; font-family: Georgia, "Times New Roman", serif; text-align: center; padding: 24px;
+    }
+    #boot h1 { font-weight: 400; letter-spacing: 0.38em; font-size: clamp(22px, 4vw, 42px); margin: 0 0 10px; }
+    #boot .sub { letter-spacing: 0.22em; font-size: 12px; opacity: 0.65; text-transform: uppercase; margin-bottom: 28px; }
+    #boot p { max-width: 420px; margin: 0 auto 14px; line-height: 1.55; font-size: 15px; color: #cbb89a; }
+    #boot button {
+      margin-top: 18px; background: transparent; color: #e8d2b0; border: 1px solid #a07848;
+      padding: 12px 28px; letter-spacing: 0.18em; font-family: inherit; cursor: pointer;
+      text-transform: uppercase; font-size: 12px;
+    }
+    #boot button:hover { background: #a07848; color: #1a0c06; }
+    #hint {
+      position: fixed; left: 16px; bottom: 16px; z-index: 15;
+      color: #cbb89a; font-family: Georgia, serif; font-size: 13px;
+      opacity: 0.85; pointer-events: none; text-shadow: 0 1px 6px #000;
+    }
+    #fade {
+      position: fixed; inset: 0; z-index: 18; background: #000; opacity: 0; pointer-events: none;
+      transition: opacity 0.9s ease;
+    }
+    #fade.on { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="boot">
+    <div>
+      <div class="sub">Level 01</div>
+      <h1>HOLLOW STONE</h1>
+      <p>Stay where you stand. Look. Point the beam. Pull the trigger to touch what you see.</p>
+      <p>The loose stone hides a key. The key opens the door.</p>
+      <button id="enter">Open the vault</button>
+    </div>
+  </div>
+  <div id="hint">Point the beam at a marked thing · pull trigger to use</div>
+  <div id="fade"></div>
+
+  <a-scene
+    id="scene"
+    vr-mode-ui="enabled: true"
+    webxr="optionalFeatures: local-floor,hand-tracking; referenceSpaceType: local-floor"
+    renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true"
+    fog="type: linear; color: #090605; near: 0.6; far: 9.5"
+    background="color: #060403"
+    crypt-world
+    visible="false">
+
+    <a-assets timeout="15000">
+      <img id="tex-wall" crossorigin="anonymous">
+      <img id="tex-floor" crossorigin="anonymous">
+      <img id="tex-ceil" crossorigin="anonymous">
+      <img id="tex-door" crossorigin="anonymous">
+    </a-assets>
+
+    <a-entity light="type: ambient; color: #1a100c; intensity: 0.08"></a-entity>
+    <a-entity light="type: hemisphere; skyColor: #24150e; groundColor: #050303; intensity: 0.09"></a-entity>
+    <a-entity id="ember" position="0 0.15 -3.7" light="type: point; color: #6a2208; intensity: 0.18; distance: 3.5; decay: 2"></a-entity>
+
+    <!-- ===================== LEVEL 1: THE FIRST VAULT ===================== -->
+    <a-entity id="level-1">
+      <a-plane class="stone-wall" width="7" height="3.1" position="0 1.55 -3.5"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; metalness: 0.02; color: #9a8a78; repeat: 2 1.1"></a-plane>
+      <a-plane class="stone-wall" width="7" height="3.1" position="0 1.55 3.5" rotation="0 180 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; metalness: 0.02; color: #8e7f6e; repeat: 2 1.1"></a-plane>
+      <a-plane class="stone-wall" width="7" height="3.1" position="-3.5 1.55 0" rotation="0 90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; metalness: 0.02; color: #958675; repeat: 2 1.1"></a-plane>
+      <a-plane class="stone-wall" width="7" height="3.1" position="3.5 1.55 0" rotation="0 -90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; metalness: 0.02; color: #8a7b6b; repeat: 2 1.1"></a-plane>
+      <a-plane width="7" height="7" position="0 0 0" rotation="-90 0 0"
+        material="shader: standard; src: #tex-floor; roughness: 0.98; color: #6e6358; repeat: 3 3"></a-plane>
+      <a-plane width="7" height="7" position="0 3.1 0" rotation="90 0 0"
+        material="shader: standard; src: #tex-ceil; roughness: 1; color: #5c5248; repeat: 3 3"></a-plane>
+
+      <a-box position="-2.4 0.22 -3.28" width="1.6" height="0.44" depth="0.42"
+        material="shader: standard; src: #tex-wall; roughness: 0.95; color: #7a6c5e"></a-box>
+      <a-box position="2.55 0.18 -3.28" width="1.3" height="0.36" depth="0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.95; color: #6f6256"></a-box>
+      <a-box position="-2.6 1.55 -2.4" width="0.38" height="3.1" depth="0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.96; color: #7d7164"></a-box>
+      <a-box position="2.6 1.55 -2.4" width="0.38" height="3.1" depth="0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.96; color: #7d7164"></a-box>
+      <a-box position="-2.6 1.55 2.4" width="0.38" height="3.1" depth="0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.96; color: #74685c"></a-box>
+      <a-box position="2.6 1.55 2.4" width="0.38" height="3.1" depth="0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.96; color: #74685c"></a-box>
+
+      <!-- Door: hittable mesh is the box itself -->
+      <a-entity id="door-pivot" position="-0.58 1.35 -3.46">
+        <a-box id="hot-door" class="clickable" position="0.58 0 0"
+          width="1.2" height="2.2" depth="0.12"
+          data-id="door"
+          material="shader: standard; src: #tex-door; roughness: 0.55; metalness: 0.55; color: #4a3d34"
+          hover-glow>
+          <a-box position="0.38 -0.15 0.08" width="0.08" height="0.08" depth="0.04"
+            material="color: #3a2e22; metalness: 0.7; roughness: 0.4"></a-box>
+        </a-box>
+      </a-entity>
+      <a-box position="0 1.35 -3.52" width="1.36" height="2.36" depth="0.04"
+        material="color: #2a221c; roughness: 0.85"></a-box>
+
+      <a-box id="hot-stone" class="clickable" position="2.05 1.15 -3.42"
+        width="0.55" height="0.4" depth="0.18"
+        data-id="stone"
+        material="shader: standard; src: #tex-wall; roughness: 0.9; color: #d4b07a; emissive: #6a3010; emissiveIntensity: 0.35"
+        hover-glow></a-box>
+
+      <a-plane id="hot-carving" class="clickable" position="-2.15 1.55 -3.44"
+        width="0.85" height="0.85"
+        data-id="carving"
+        material="shader: standard; src: #tex-wall; color: #6a4a32; roughness: 1; emissive: #3a1808; emissiveIntensity: 0.2"
+        hover-glow>
+        <a-text value="II" align="center" position="0 0 0.02" width="2.4" color="#e8c48a"></a-text>
+      </a-plane>
+
+      <a-cylinder id="hot-drain" class="clickable" position="0 0.04 1.6"
+        radius="0.48" height="0.06"
+        data-id="drain"
+        material="shader: standard; color: #2b241c; metalness: 0.6; roughness: 0.45"
+        hover-glow>
+        <a-circle position="0 0.04 0" rotation="-90 0 0" radius="0.3" material="shader: flat; color: #050302"></a-circle>
+      </a-cylinder>
+
+      <a-box id="hot-key" class="clickable" position="2.05 1.15 -3.22" visible="false"
+        width="0.22" height="0.08" depth="0.06"
+        data-id="key"
+        material="color: #c4a050; metalness: 0.7; roughness: 0.35; emissive: #6a4a10; emissiveIntensity: 0.4"
+        hover-glow></a-box>
+    </a-entity>
+
+    <!-- ===================== LEVEL 2 STUB: THE CHAPEL ===================== -->
+    <a-entity id="level-2" visible="false">
+      <a-plane width="8" height="3.4" position="0 1.7 -4"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; color: #6a5a52; repeat: 2.2 1.2"></a-plane>
+      <a-plane width="8" height="3.4" position="0 1.7 4" rotation="0 180 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; color: #5e5048; repeat: 2.2 1.2"></a-plane>
+      <a-plane width="8" height="3.4" position="-4 1.7 0" rotation="0 90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; color: #64564e; repeat: 2.2 1.2"></a-plane>
+      <a-plane width="8" height="3.4" position="4 1.7 0" rotation="0 -90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.97; color: #5a4c44; repeat: 2.2 1.2"></a-plane>
+      <a-plane width="8" height="8" position="0 0 0" rotation="-90 0 0"
+        material="shader: standard; src: #tex-floor; roughness: 0.98; color: #4a4038; repeat: 3 3"></a-plane>
+      <a-plane width="8" height="8" position="0 3.4 0" rotation="90 0 0"
+        material="shader: standard; src: #tex-ceil; roughness: 1; color: #3a322c; repeat: 3 3"></a-plane>
+
+      <a-box position="-1.6 0.45 -2.2" width="1.1" height="0.9" depth="0.38"
+        material="shader: standard; src: #tex-wall; color: #4a3c32"></a-box>
+      <a-box position="1.6 0.45 -2.2" width="1.1" height="0.9" depth="0.38"
+        material="shader: standard; src: #tex-wall; color: #4a3c32"></a-box>
+      <a-box position="0 0.7 -3.55" width="1.4" height="1.4" depth="0.4"
+        material="shader: standard; src: #tex-wall; color: #3e3228"></a-box>
+
+      <a-box id="hot-altar" class="clickable" position="0 1.45 -3.28"
+        width="1.1" height="0.16" depth="0.5"
+        data-id="altar"
+        material="shader: standard; color: #2a221c; metalness: 0.2; roughness: 0.7; emissive: #3a1008; emissiveIntensity: 0.25"
+        hover-glow></a-box>
+
+      <a-text value="THE CHAPEL" align="center" position="0 2.55 -3.2" width="4" color="#c4a070"></a-text>
+      <a-text value="Level 2 — waiting" align="center" position="0 2.28 -3.2" width="3.2" color="#8a7060"></a-text>
+    </a-entity>
+
+    <!-- Inspect slate rides with the camera so it is readable in VR -->
+    <a-entity id="slate" visible="false">
+      <a-plane width="1.25" height="0.52" material="shader: flat; color: #120c08; opacity: 0.92; transparent: true"></a-plane>
+      <a-text id="slate-title" value="" align="center" position="0 0.14 0.01" width="1.15" color="#e8c48a"></a-text>
+      <a-text id="slate-body" value="" align="center" position="0 -0.05 0.01" width="1.12" wrap-count="36" color="#d7c4a4"></a-text>
+    </a-entity>
+
+    <a-entity id="rig" position="0 0 0">
+      <a-camera id="cam" look-controls="pointerLockEnabled: true" wasd-controls="enabled: false" position="0 1.6 0">
+        <a-entity
+          cursor="fuse: false; rayOrigin: mouse"
+          raycaster="objects: .clickable; far: 10; interval: 80"
+          pointer-interact>
+          <a-ring position="0 0 -0.9" radius-inner="0.006" radius-outer="0.010"
+            material="shader: flat; color: #e8c48a; opacity: 0.7"></a-ring>
+        </a-entity>
+        <a-entity id="head-light" desktop-lamp>
+          <a-light type="spot" color="#ffd8a8" intensity="1.6" angle="22" penumbra="0.55" distance="14" decay="1.3"></a-light>
+        </a-entity>
+      </a-camera>
+
+      <a-entity id="leftHand"
+        laser-controls="hand: left"
+        oculus-touch-controls="hand: left"
+        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #e8a85a; lineOpacity: 0.55"
+        hand-flashlight="hand: left; color: #ffd4a0; intensity: 2.35"
+        pointer-interact>
+      </a-entity>
+
+      <a-entity id="rightHand"
+        laser-controls="hand: right"
+        oculus-touch-controls="hand: right"
+        raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #e8a85a; lineOpacity: 0.55"
+        hand-flashlight="hand: right; color: #ffe1b5; intensity: 2.35"
+        pointer-interact>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const Game = { level: 1, hasKey: false, doorOpen: false, entering: false };
+
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        var t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    function valueNoise(rng, w, h, cell) {
+      const gw = Math.ceil(w / cell) + 2;
+      const gh = Math.ceil(h / cell) + 2;
+      const g = new Float32Array(gw * gh);
+      for (let i = 0; i < g.length; i++) g[i] = rng();
+      const out = new Float32Array(w * h);
+      const fade = (t) => t * t * (3 - 2 * t);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const fx = x / cell, fy = y / cell;
+          const x0 = fx | 0, y0 = fy | 0;
+          const tx = fade(fx - x0), ty = fade(fy - y0);
+          const i00 = y0 * gw + x0, i10 = i00 + 1, i01 = i00 + gw, i11 = i01 + 1;
+          const a = g[i00] + (g[i10] - g[i00]) * tx;
+          const b = g[i01] + (g[i11] - g[i01]) * tx;
+          out[y * w + x] = a + (b - a) * ty;
+        }
+      }
+      return out;
+    }
+    function paintStone(w, h, seed, opts) {
+      const rng = mulberry32(seed);
+      const n1 = valueNoise(rng, w, h, opts.cell1 || 48);
+      const n2 = valueNoise(rng, w, h, opts.cell2 || 18);
+      const n3 = valueNoise(rng, w, h, opts.cell3 || 7);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(w, h);
+      const d = img.data;
+      const mortarW = opts.mortar || 0.045;
+      const bx = opts.brickX || 140;
+      const by = opts.brickY || 78;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = y * w + x;
+          const row = Math.floor(y / by);
+          const xOff = (row % 2) * (bx * 0.5);
+          const lx = ((x + xOff) % bx) / bx;
+          const ly = (y % by) / by;
+          const inMortar = lx < mortarW || lx > 1 - mortarW || ly < mortarW * 1.6 || ly > 1 - mortarW * 1.6;
+          const grain = n1[i] * 0.55 + n2[i] * 0.3 + n3[i] * 0.15;
+          let r, g, b;
+          if (inMortar) {
+            r = 46 + grain * 22; g = 40 + grain * 16; b = 34 + grain * 12;
+          } else {
+            r = opts.r0 + grain * opts.rd + (n3[i] - 0.5) * 18;
+            g = opts.g0 + grain * opts.gd + (n2[i] - 0.5) * 14;
+            b = opts.b0 + grain * opts.bd + (n1[i] - 0.5) * 10;
+            if (n3[i] > 0.82) { r += 18; g += 8; }
+            if (n2[i] < 0.18) { g += 10; b += 4; }
+          }
+          const o = i * 4;
+          d[o] = Math.max(0, Math.min(255, r));
+          d[o + 1] = Math.max(0, Math.min(255, g));
+          d[o + 2] = Math.max(0, Math.min(255, b));
+          d[o + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      ctx.strokeStyle = 'rgba(20,14,10,0.35)';
+      ctx.lineWidth = 1;
+      for (let k = 0; k < (opts.cracks || 18); k++) {
+        ctx.beginPath();
+        let x = rng() * w, y = rng() * h;
+        ctx.moveTo(x, y);
+        for (let s = 0; s < 12; s++) {
+          x += (rng() - 0.45) * 28;
+          y += (rng() - 0.3) * 22;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      return c.toDataURL('image/jpeg', 0.82);
+    }
+    function paintIron(w, h, seed) {
+      const rng = mulberry32(seed);
+      const n = valueNoise(rng, w, h, 22);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(w, h);
+      const d = img.data;
+      for (let i = 0; i < w * h; i++) {
+        const v = n[i];
+        const rust = v > 0.62 ? (v - 0.62) * 2 : 0;
+        d[i * 4] = 38 + v * 30 + rust * 90;
+        d[i * 4 + 1] = 30 + v * 22 + rust * 28;
+        d[i * 4 + 2] = 26 + v * 16;
+        d[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      ctx.fillStyle = '#2a2218';
+      for (let y = 18; y < h; y += 46) {
+        for (let x = 18; x < w; x += 46) {
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      return c.toDataURL('image/jpeg', 0.8);
+    }
+    function buildTextures() {
+      document.querySelector('#tex-wall').src = paintStone(1024, 1024, 90210, {
+        r0: 92, rd: 70, g0: 80, gd: 55, b0: 68, bd: 40, brickX: 160, brickY: 86, cracks: 22
+      });
+      document.querySelector('#tex-floor').src = paintStone(1024, 1024, 441, {
+        r0: 70, rd: 50, g0: 62, gd: 40, b0: 52, bd: 28, brickX: 110, brickY: 110, mortar: 0.06, cracks: 10
+      });
+      document.querySelector('#tex-ceil').src = paintStone(512, 512, 77, {
+        r0: 58, rd: 36, g0: 50, gd: 28, b0: 44, bd: 20, brickX: 90, brickY: 70, cracks: 8
+      });
+      document.querySelector('#tex-door').src = paintIron(512, 1024, 13);
+    }
+
+    AFRAME.registerComponent('hand-flashlight', {
+      schema: {
+        hand: { type: 'string' },
+        color: { type: 'color', default: '#ffd8a8' },
+        intensity: { type: 'number', default: 2.3 }
+      },
+      init: function () {
+        this.base = this.data.intensity;
+        this.focused = false;
+        this.flicker = 1;
+        const light = document.createElement('a-light');
+        light.setAttribute('type', 'spot');
+        light.setAttribute('color', this.data.color);
+        light.setAttribute('intensity', this.base);
+        light.setAttribute('angle', 19);
+        light.setAttribute('penumbra', 0.55);
+        light.setAttribute('distance', 15);
+        light.setAttribute('decay', 1.35);
+        this.el.appendChild(light);
+        this.light = light;
+
+        const body = document.createElement('a-cylinder');
+        body.setAttribute('radius', 0.022);
+        body.setAttribute('height', 0.11);
+        body.setAttribute('rotation', '90 0 0');
+        body.setAttribute('position', '0 -0.02 -0.05');
+        body.setAttribute('material', 'color: #161412; roughness: 0.7; metalness: 0.4');
+        this.el.appendChild(body);
+
+        const lens = document.createElement('a-sphere');
+        lens.setAttribute('radius', 0.024);
+        lens.setAttribute('position', '0 -0.02 -0.11');
+        lens.setAttribute('material', 'shader: flat; color: #fff4d2; emissive: #ffcc88; emissiveIntensity: 3');
+        this.el.appendChild(lens);
+
+        const beam = document.createElement('a-cone');
+        beam.setAttribute('radius-top', 0.48);
+        beam.setAttribute('radius-bottom', 0.018);
+        beam.setAttribute('height', 2.0);
+        beam.setAttribute('position', '0 -0.02 -1.12');
+        beam.setAttribute('rotation', '-90 0 0');
+        beam.setAttribute('material', 'shader: flat; color: #ffe0b0; opacity: 0.065; transparent: true; side: double; depthWrite: false');
+        this.el.appendChild(beam);
+        this.beam = beam;
+
+        const on = () => { this.focused = true; };
+        const off = () => { this.focused = false; };
+        this.el.addEventListener('triggerdown', on);
+        this.el.addEventListener('gripdown', on);
+        this.el.addEventListener('triggerup', off);
+        this.el.addEventListener('gripup', off);
+      },
+      tick: function (t) {
+        if (!this.light) return;
+        if (Math.random() < 0.004) this.flicker = 0.35 + Math.random() * 0.3;
+        else this.flicker += (1 - this.flicker) * 0.12;
+        const wobble = 1 + Math.sin(t * 0.009 + (this.data.hand === 'left' ? 0 : 1.7)) * 0.025;
+        const target = this.focused ? this.base * 1.75 : this.base;
+        this.light.setAttribute('intensity', target * this.flicker * wobble);
+        this.light.setAttribute('angle', this.focused ? 12 : 19);
+        if (this.beam) this.beam.setAttribute('material', 'opacity', this.focused ? 0.1 : 0.06);
+      }
+    });
+
+    AFRAME.registerComponent('desktop-lamp', {
+      init: function () {
+        const scene = this.el.sceneEl;
+        scene.addEventListener('enter-vr', () => this.el.setAttribute('visible', false));
+        scene.addEventListener('exit-vr', () => this.el.setAttribute('visible', true));
+      }
+    });
+
+    AFRAME.registerComponent('hover-glow', {
+      init: function () {
+        this.baseE = this.el.getAttribute('material').emissiveIntensity || 0;
+        this.el.addEventListener('raycaster-intersected', () => {
+          this.el.setAttribute('material', 'emissiveIntensity', Math.max(0.55, this.baseE + 0.4));
+        });
+        this.el.addEventListener('raycaster-intersected-cleared', () => {
+          this.el.setAttribute('material', 'emissiveIntensity', this.baseE);
+        });
+      }
+    });
+
+    AFRAME.registerComponent('pointer-interact', {
+      init: function () {
+        this._lock = 0;
+        const fire = () => {
+          const now = performance.now();
+          if (now - this._lock < 280) return;
+          const rc = this.el.components.raycaster;
+          if (!rc) return;
+          const hits = rc.intersections;
+          if (!hits || !hits.length) return;
+          let el = hits[0].object.el;
+          if (!el) return;
+          while (el && !el.classList.contains('clickable')) el = el.parentEl;
+          if (!el) return;
+          this._lock = now;
+          useHotspot(el.dataset.id, el);
+        };
+        this.el.addEventListener('click', fire);
+        this.el.addEventListener('triggerdown', fire);
+        this.el.addEventListener('abuttondown', fire);
+        this.el.addEventListener('xbuttondown', fire);
+      }
+    });
+
+    AFRAME.registerComponent('crypt-world', {
+      init: function () {
+        this.el.addEventListener('enter-vr', () => {
+          const h = document.getElementById('hint');
+          if (h) h.textContent = 'Point a beam until it glows · pull trigger';
+        });
+      },
+      tick: function () {
+        const slate = document.querySelector('#slate');
+        const cam = document.querySelector('#cam');
+        if (!slate || !cam || slate.getAttribute('visible') === false) return;
+        const obj = cam.object3D;
+        const pos = new THREE.Vector3();
+        const dir = new THREE.Vector3();
+        obj.getWorldPosition(pos);
+        obj.getWorldDirection(dir);
+        pos.add(dir.multiplyScalar(-1.2));
+        slate.object3D.position.copy(pos);
+        slate.object3D.quaternion.copy(obj.getWorldQuaternion(new THREE.Quaternion()));
+      }
+    });
+
+    function showSlate(title, body) {
+      document.querySelector('#slate-title').setAttribute('value', title);
+      document.querySelector('#slate-body').setAttribute('value', body);
+      document.querySelector('#slate').setAttribute('visible', true);
+      clearTimeout(window._slateTimer);
+      window._slateTimer = setTimeout(() => {
+        document.querySelector('#slate').setAttribute('visible', false);
+      }, 7000);
+    }
+
+    function useHotspot(id, el) {
+      if (!id) return;
+      tickSound();
+      if (id === 'stone') {
+        Game.hasKey = true;
+        const key = document.querySelector('#hot-key');
+        key.setAttribute('visible', true);
+        el.setAttribute('position', '2.14 1.06 -3.38');
+        el.setAttribute('rotation', '10 -14 8');
+        el.setAttribute('material', 'emissiveIntensity', 0.08);
+        showSlate('LOOSE STONE', 'The block shifts. A rusted key sits in the hollow. Scratch in the mortar: TWO LIGHTS. ONE LIES.');
+        document.getElementById('hint').textContent = 'Take the key, then use the door.';
+        return;
+      }
+      if (id === 'key') {
+        Game.hasKey = true;
+        el.setAttribute('visible', false);
+        showSlate('RUSTED KEY', 'Cold. Heavy. It wants the iron door.');
+        document.getElementById('hint').textContent = 'Point at the door and pull trigger.';
+        return;
+      }
+      if (id === 'carving') {
+        showSlate('CARVING', 'Two hands. Two lamps. The path only appears when both beams cross the same mark.');
+        return;
+      }
+      if (id === 'drain') {
+        showSlate('DRAIN', 'A grate in the floor. Water ticks somewhere below. Not this door.');
+        return;
+      }
+      if (id === 'door') {
+        if (Game.doorOpen || Game.entering) return;
+        if (!Game.hasKey) {
+          showSlate('SEALED DOOR', 'Locked. The warm iron will not move. Something is hidden in the stone to the right.');
+          return;
+        }
+        openDoorToLevel2();
+        return;
+      }
+      if (id === 'altar') {
+        showSlate('ALTAR', 'Ash and a second mark. Level 2 is only a threshold for now. We build this room next.');
+      }
+    }
+
+    function openDoorToLevel2() {
+      Game.doorOpen = true;
+      Game.entering = true;
+      showSlate('THE DOOR', 'The key turns. The vault exhales.');
+      creak();
+      document.querySelector('#door-pivot').setAttribute('animation', {
+        property: 'rotation',
+        to: '0 -88 0',
+        dur: 1600,
+        easing: 'easeInOutQuad'
+      });
+      setTimeout(() => document.getElementById('fade').classList.add('on'), 1100);
+      setTimeout(() => {
+        document.querySelector('#level-1').setAttribute('visible', false);
+        document.querySelector('#level-2').setAttribute('visible', true);
+        document.querySelector('#ember').setAttribute('light', 'color: #4a1208; intensity: 0.28; distance: 5');
+        document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #08040a; near: 0.5; far: 8.5');
+        document.querySelector('#scene').setAttribute('background', 'color: #070308');
+        Game.level = 2;
+        chapelDrone(true);
+        document.getElementById('hint').textContent = 'Level 2 · The Chapel — a stub. Touch the altar.';
+        document.querySelector('#slate').setAttribute('visible', false);
+        document.getElementById('fade').classList.remove('on');
+        Game.entering = false;
+      }, 2100);
+    }
+
+    /* -------------------- audio bed (no files) -------------------- */
+    let audioCtx, chapelNode;
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+    function noiseBuffer(seconds, color) {
+      const ctx = ensureAudio();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        last = color === 'brown' ? (last + 0.02 * w) / 1.02 : w;
+        d[i] = last * 0.9;
+      }
+      return buf;
+    }
+    function startAmbience() {
+      const ctx = ensureAudio();
+      const room = ctx.createBufferSource();
+      room.buffer = noiseBuffer(4, 'brown');
+      room.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 240;
+      const g = ctx.createGain(); g.gain.value = 0.045;
+      room.connect(lp); lp.connect(g); g.connect(ctx.destination);
+      room.start();
+
+      const wind = ctx.createBufferSource();
+      wind.buffer = noiseBuffer(5, 'white');
+      wind.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'bandpass'; hp.frequency.value = 900; hp.Q.value = 0.6;
+      const wg = ctx.createGain(); wg.gain.value = 0.012;
+      wind.connect(hp); hp.connect(wg); wg.connect(ctx.destination);
+      wind.start();
+
+      const pulse = ctx.createOscillator();
+      pulse.type = 'sine'; pulse.frequency.value = 46;
+      const pg = ctx.createGain(); pg.gain.value = 0.0;
+      pulse.connect(pg); pg.connect(ctx.destination);
+      pulse.start();
+      const lfo = () => {
+        const t = ctx.currentTime;
+        pg.gain.cancelScheduledValues(t);
+        pg.gain.setValueAtTime(0.0001, t);
+        pg.gain.linearRampToValueAtTime(0.028, t + 0.12);
+        pg.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      };
+      lfo();
+      setInterval(lfo, 2100);
+
+      const dripLoop = () => {
+        if (Math.random() < 0.55) drip(160 + Math.random() * 120, 0.028);
+        setTimeout(dripLoop, 1400 + Math.random() * 2600);
+      };
+      dripLoop();
+
+      const groanLoop = () => {
+        if (Math.random() < 0.35) groan();
+        setTimeout(groanLoop, 8000 + Math.random() * 9000);
+      };
+      setTimeout(groanLoop, 5000);
+    }
+    function drip(freq, gain) {
+      const ctx = ensureAudio();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.35, ctx.currentTime + 0.2);
+      g.gain.setValueAtTime(gain, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.24);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.25);
+    }
+    function groan() {
+      const ctx = ensureAudio();
+      const o = ctx.createOscillator();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(70, ctx.currentTime);
+      o.frequency.linearRampToValueAtTime(42, ctx.currentTime + 1.6);
+      f.type = 'lowpass'; f.frequency.value = 180;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 0.3);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.8);
+      o.connect(f); f.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 1.9);
+    }
+    function tickSound() {
+      drip(420, 0.04);
+    }
+    function creak() {
+      const ctx = ensureAudio();
+      const o = ctx.createOscillator();
+      const f = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(180, ctx.currentTime);
+      o.frequency.linearRampToValueAtTime(90, ctx.currentTime + 1.4);
+      f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 4;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.2);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.5);
+      o.connect(f); f.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 1.6);
+    }
+    function chapelDrone(on) {
+      const ctx = ensureAudio();
+      if (!on) return;
+      const o1 = ctx.createOscillator();
+      const o2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      o1.type = 'sine'; o2.type = 'sine';
+      o1.frequency.value = 110; o2.frequency.value = 164.8;
+      g.gain.value = 0.018;
+      o1.connect(g); o2.connect(g); g.connect(ctx.destination);
+      o1.start(); o2.start();
+    }
+
+    buildTextures();
+    document.getElementById('enter').addEventListener('click', () => {
+      document.getElementById('boot').style.display = 'none';
+      document.getElementById('scene').setAttribute('visible', true);
+      startAmbience();
+    });
+  </script>
+</body>
+</html>
