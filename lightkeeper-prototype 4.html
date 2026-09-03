@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lightkeeper — Prototype (Floors 1 & 2, v2)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #05070a; height: 100%; }
+  #info {
+    position: fixed; top: 0; left: 0; width: 100%; text-align: center;
+    color: #cfd6dd; font-family: Georgia, serif; padding: 14px 8px; z-index: 2;
+    background: linear-gradient(#05070aee, transparent);
+    pointer-events: none;
+  }
+  #info h1 { font-size: 20px; margin: 0 0 4px 0; letter-spacing: 1px; font-weight: 400; }
+  #info p { font-size: 13px; margin: 0; color: #8b95a1; }
+  #VRButton {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 12px 20px; border: 1px solid #4a5568; border-radius: 4px;
+    background: #10141b; color: #cfd6dd; font-family: Georgia, serif; font-size: 14px;
+    cursor: pointer; z-index: 3;
+  }
+</style>
+</head>
+<body>
+<div id="info">
+  <h1>Lightkeeper</h1>
+  <p>Prototype — Floor 1 (Runes) &amp; Floor 2 (The Loop + The Casting). Enter VR to play.</p>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+/* ---------------------------------------------------------------
+   LIGHTKEEPER PROTOTYPE — Floors 1 & 2
+   - Right or left controller acts as the lantern (spotlight).
+   - Point the lantern at a rune/landing and hold it steady to
+     illuminate it. Squeeze the trigger to interact with a door
+     or confirm a discovery once it's lit.
+--------------------------------------------------------------- */
+
+let scene, camera, renderer;
+let controller1, controller2;
+let lantern; // the controller currently acting as the lantern
+const clock = new THREE.Clock();
+
+const floor1 = new THREE.Group();
+const floor2 = new THREE.Group();
+let currentFloor = 1;
+
+// ---- Floor 1 state ----
+const runeOrder = ['square', 'cross', 'circle', 'triangle']; // required solve order (mixed up)
+let runeProgress = 0;
+let runeMeshes = [];
+let door1;
+let door1Unlocked = false;
+let dreadFlashTimer = 0;
+
+// ---- Floor 2 state ----
+let landingMeshes = [];
+const correctLandingIndex = 2; // fixed for prototype determinism
+let loopFixed = false; // stage 1 of floor 2: found the odd landing
+let floor2Solved = false; // stage 2 complete: the shadow-casting puzzle
+let endMessage;
+
+// ---- The Casting (two-handed shadow puzzle, appears after loopFixed) ----
+let emblem, emblemPedestal, targetRing;
+const CASTING_WALL_Z = -1.75; // world-space z of the far wall's inner face on floor 2
+const castingState = { aligned: false, confirmed: false, dwell: 0 };
+
+// ---- Audio ----
+let audioCtx, masterGain;
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05070a, 0.12);
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 50);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  const vrButton = VRButton.createButton(renderer);
+  document.body.appendChild(vrButton);
+
+  // Start subtle ambient audio on the button click itself (guaranteed user
+  // gesture) and again on sessionstart as a fallback for browsers that need it
+  vrButton.addEventListener('click', initAudio);
+  renderer.xr.addEventListener('sessionstart', initAudio);
+
+  // Dim ambient — the world should be barely visible without the lantern
+  scene.add(new THREE.AmbientLight(0x1a2230, 0.35));
+  const moon = new THREE.DirectionalLight(0x33415a, 0.15);
+  moon.position.set(2, 4, -2);
+  scene.add(moon);
+
+  buildFloor1();
+  buildFloor2();
+  scene.add(floor1);
+  scene.add(floor2);
+  floor2.visible = false;
+
+  // Controllers
+  controller1 = renderer.xr.getController(0);
+  controller2 = renderer.xr.getController(1);
+  scene.add(controller1);
+  scene.add(controller2);
+
+  [controller1, controller2].forEach((ctrl) => {
+    ctrl.userData.selectPressed = false;
+    ctrl.add(makeLanternMesh());
+    const spot = makeLanternLight();
+    ctrl.add(spot);
+    ctrl.add(spot.target);
+    ctrl.userData.spot = spot;
+    ctrl.addEventListener('selectstart', onSelectStart);
+    ctrl.addEventListener('selectend', () => (ctrl.userData.selectPressed = false));
+  });
+  lantern = controller1; // default; whichever controller connects/moves acts as lantern
+
+  window.addEventListener('resize', onWindowResize);
+  renderer.setAnimationLoop(render);
+}
+
+function onSelectStart(event) {
+  const ctrl = event.target;
+  ctrl.userData.selectPressed = true;
+  lantern = ctrl; // last controller to press trigger becomes the active lantern hand
+  handleInteraction();
+}
+
+// ---------- Lantern visuals ----------
+function makeLanternMesh() {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.03, 0.08, 8),
+    new THREE.MeshStandardMaterial({ color: 0x3a2b1a, metalness: 0.4, roughness: 0.6 })
+  );
+  body.rotation.x = Math.PI / 2;
+  body.position.z = -0.05;
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.018, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffcf8a })
+  );
+  bulb.position.z = -0.09;
+  group.add(body, bulb);
+  return group;
+}
+
+function makeLanternLight() {
+  const spot = new THREE.SpotLight(0xffcf8a, 6, 6, THREE.MathUtils.degToRad(20), 0.4, 1.2);
+  spot.position.set(0, 0, 0);
+  spot.target.position.set(0, 0, -1);
+  return spot;
+}
+
+// ---------- Subtle procedural ambient audio ----------
+let audioInitStarted = false;
+function initAudio() {
+  if (audioInitStarted) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  audioInitStarted = true;
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0; // fade in below
+  masterGain.connect(audioCtx.destination);
+
+  // Low detuned drone — the "something is listening" hum
+  [55, 55.6].forEach((freq) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.value = 0.5;
+    osc.connect(oscGain).connect(masterGain);
+    osc.start();
+  });
+
+  // Filtered noise for wind / distant sea
+  const bufferSize = audioCtx.sampleRate * 2;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = noiseBuffer;
+  noise.loop = true;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 400;
+  noiseFilter.Q.value = 0.7;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0.25;
+  noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+  noise.start();
+
+  // Slow LFO breathing the noise volume so it doesn't sit static
+  const lfo = audioCtx.createOscillator();
+  lfo.frequency.value = 0.07;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0.08;
+  lfo.connect(lfoGain).connect(noiseGain.gain);
+  lfo.start();
+
+  // Fade the ambience in — raised slightly from the first pass, which was
+  // reportedly inaudible on headset speakers
+  masterGain.gain.linearRampToValueAtTime(0.14, audioCtx.currentTime + 4);
+}
+
+// Brief tonal sting used to punctuate a solved puzzle stage — stays quiet
+function playChime(freq = 660) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  const g = audioCtx.createGain();
+  g.gain.value = 0;
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start();
+  g.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.4);
+  osc.stop(audioCtx.currentTime + 1.5);
+}
+
+// ---------- Texture helper: draw simple rune shapes on canvas ----------
+function makeSymbolTexture(shape, color = '#e8c98a', bg = '#0000') {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 10;
+  ctx.lineJoin = 'round';
+  const c = size / 2, r = size * 0.3;
+  ctx.beginPath();
+  if (shape === 'circle') {
+    ctx.arc(c, c, r, 0, Math.PI * 2);
+  } else if (shape === 'triangle') {
+    ctx.moveTo(c, c - r);
+    ctx.lineTo(c - r * 0.87, c + r * 0.5);
+    ctx.lineTo(c + r * 0.87, c + r * 0.5);
+    ctx.closePath();
+  } else if (shape === 'square') {
+    ctx.rect(c - r * 0.75, c - r * 0.75, r * 1.5, r * 1.5);
+  } else if (shape === 'cross') {
+    const w = r * 0.35;
+    ctx.moveTo(c - w, c - r); ctx.lineTo(c + w, c - r);
+    ctx.lineTo(c + w, c - w); ctx.lineTo(c + r, c - w);
+    ctx.lineTo(c + r, c + w); ctx.lineTo(c + w, c + w);
+    ctx.lineTo(c + w, c + r); ctx.lineTo(c - w, c + r);
+    ctx.lineTo(c - w, c + w); ctx.lineTo(c - r, c + w);
+    ctx.lineTo(c - r, c - w); ctx.lineTo(c - w, c - w);
+    ctx.closePath();
+  } else if (shape === 'spiral') {
+    ctx.moveTo(c, c);
+    for (let a = 0; a < Math.PI * 6; a += 0.1) {
+      const rad = (a / (Math.PI * 6)) * r;
+      ctx.lineTo(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
+    }
+  }
+  ctx.stroke();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function makeTextPlane(text, width = 0.4, height = 0.5) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 320;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#e9e2d2';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#2a2620';
+  ctx.font = '20px Georgia';
+  const lines = text.split('\n');
+  lines.forEach((line, i) => ctx.fillText(line, 16, 40 + i * 28));
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.MeshBasicMaterial({ map: tex });
+  const geo = new THREE.PlaneGeometry(width, height);
+  return new THREE.Mesh(geo, mat);
+}
+
+// ---------- Room shell helper ----------
+function buildRoomShell(size = 3.2, height = 2.6, color = 0x1c1f26) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.95, side: THREE.BackSide });
+  const room = new THREE.Mesh(new THREE.BoxGeometry(size, height, size), mat);
+  room.position.y = height / 2;
+  group.add(room);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2c2418, roughness: 1 });
+  // radius must stay under size/2, or the floor pokes out past the walls and
+  // z-fights with the wall's bottom edge (this was causing the flicker)
+  const floorMesh = new THREE.Mesh(new THREE.CircleGeometry(size * 0.48, 32), floorMat);
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.position.y = 0.002; // lift a hair off the wall base plane
+  group.add(floorMesh);
+  return group;
+}
+
+// =====================================================================
+// FLOOR 1 — Rune sequence puzzle
+// =====================================================================
+function buildFloor1() {
+  floor1.add(buildRoomShell(3.4, 2.6, 0x1a1d24));
+
+  // Journal hint near entrance: shows the required order (circle, triangle, square)
+  const hint = new THREE.Group();
+  const hintPlane = makeTextPlane('A keeper\'s note:\n\nThe tide obeys\nthe wall,\nthen the crossing,\nthen the circle,\nthen the peak.', 0.4, 0.5);
+  hintPlane.position.set(0, 1.2, 1.55);
+  hint.add(hintPlane);
+  floor1.add(hint);
+
+  // Four runes on the far wall, spaced apart, hidden until lit
+  const shapes = ['circle', 'triangle', 'square', 'cross']; // wall order left-to-right (deliberately not the solve order)
+  const positions = [-1.2, -0.4, 0.4, 1.2];
+  runeMeshes = shapes.map((shape, i) => {
+    const tex = makeSymbolTexture(shape);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.06 });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), mat);
+    mesh.position.set(positions[i], 1.4, -1.65);
+    mesh.userData = { shape, lit: false, dwell: 0, solved: false };
+    floor1.add(mesh);
+    return mesh;
+  });
+
+  // Door that opens once all runes are solved in order
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x2a2320, emissive: 0x000000 });
+  door1 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.9), doorMat);
+  door1.position.set(1.65, 0.95, 0);
+  door1.rotation.y = -Math.PI / 2;
+  door1.userData = { isDoor: true, target: 'floor2' };
+  floor1.add(door1);
+}
+
+// =====================================================================
+// FLOOR 2 — The Stairwell Loop
+// =====================================================================
+function buildFloor2() {
+  floor2.add(buildRoomShell(3.6, 2.8, 0x14171d));
+
+  const hint = makeTextPlane('...and still the stair\nreturns me here.\nOne landing lies.\nFind where the\nspiral turns wrong.', 0.4, 0.5);
+  hint.position.set(0, 1.3, 1.6);
+  floor2.add(hint);
+
+  // 6 landings arranged in a circle, each with a spiral rune
+  const count = 6;
+  const radius = 1.3;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.22, 0.9, 8),
+      new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: 0.9 })
+    );
+    pedestal.position.set(x, 0.45, z);
+    floor2.add(pedestal);
+
+    const isCorrect = i === correctLandingIndex;
+    const tex = makeSymbolTexture('spiral', isCorrect ? '#7ec8e3' : '#e8c98a');
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.05 });
+    const symbol = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), mat);
+    symbol.position.set(x, 1.0, z);
+    symbol.lookAt(0, 1.0, 0);
+    symbol.userData = { isCorrect, lit: false, dwell: 0 };
+    floor2.add(symbol);
+    landingMeshes.push(symbol);
+  }
+
+  // ---- The Casting: two-handed shadow puzzle (revealed once the loop is fixed) ----
+  emblemPedestal = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.2, 0.7, 8),
+    new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: 0.9 })
+  );
+  emblemPedestal.position.set(0, 0.35, 0);
+  emblemPedestal.visible = false;
+  floor2.add(emblemPedestal);
+
+  // An asymmetric sigil built from a few boxes, so its shadow silhouette is distinctive
+  emblem = new THREE.Group();
+  const sigilMat = new THREE.MeshStandardMaterial({ color: 0x3a3226, roughness: 0.8 });
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), sigilMat);
+  const armA = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.05, 0.05), sigilMat);
+  armA.position.set(0.08, 0.08, 0);
+  armA.rotation.z = 0.4;
+  const armB = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.05), sigilMat);
+  armB.position.set(-0.06, -0.1, 0);
+  armB.rotation.z = -0.6;
+  [spine, armA, armB].forEach((m) => {
+    emblem.add(m);
+  });
+  emblem.position.set(0, 0.7, 0);
+  emblem.visible = false;
+  floor2.add(emblem);
+
+  // Faint target outline on the far wall — where the shadow needs to land
+  const ringTex = makeRingTexture();
+  const ringMat = new THREE.MeshBasicMaterial({ map: ringTex, transparent: true, opacity: 0.18 });
+  targetRing = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), ringMat);
+  targetRing.position.set(0.55, 1.35, CASTING_WALL_Z + 0.01);
+  targetRing.visible = false;
+  targetRing.userData = { dwell: 0 };
+  floor2.add(targetRing);
+
+  endMessage = makeTextPlane('Floors 3 & 4 —\ncoming next.\n\n(prototype ends\nhere)', 0.5, 0.5);
+  endMessage.position.set(0, 1.4, 0);
+  endMessage.visible = false;
+  floor2.add(endMessage);
+}
+
+function makeRingTexture() {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#7ec8e3';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.32, 0, Math.PI * 2);
+  ctx.stroke();
+  return new THREE.CanvasTexture(canvas);
+}
+
+// =====================================================================
+// Interaction (trigger press)
+// =====================================================================
+function handleInteraction() {
+  if (currentFloor === 1 && door1Unlocked) {
+    const dist = lantern.position.distanceTo(door1.position);
+    if (isPointingAt(lantern, door1, 0.6) || dist < 1.2) {
+      switchToFloor2();
+    }
+  }
+  if (currentFloor === 2 && !loopFixed) {
+    const target = landingMeshes.find((m) => m.userData.lit && m.userData.isCorrect);
+    if (target) {
+      loopFixed = true;
+      landingMeshes.forEach((m) => (m.material.opacity = m.userData.isCorrect ? 1 : 0.05));
+      emblemPedestal.visible = true;
+      emblem.visible = true;
+      targetRing.visible = true;
+      playChime(660);
+    }
+  }
+}
+
+function isPointingAt(controller, mesh, coneRadians) {
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(controller.quaternion);
+  const toTarget = new THREE.Vector3().subVectors(mesh.getWorldPosition(new THREE.Vector3()), controller.position).normalize();
+  return dir.angleTo(toTarget) < coneRadians;
+}
+
+function switchToFloor2() {
+  floor1.visible = false;
+  floor2.visible = true;
+  currentFloor = 2;
+}
+
+// =====================================================================
+// Per-frame update
+// =====================================================================
+function updateLanternIllumination(delta) {
+  [controller1, controller2].forEach((ctrl) => {
+    const spot = ctrl.userData.spot;
+    const spotAngle = spot.angle;
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(ctrl.quaternion);
+    const origin = ctrl.position;
+
+    const targets = currentFloor === 1 ? runeMeshes : landingMeshes;
+    targets.forEach((mesh) => {
+      const worldPos = mesh.getWorldPosition(new THREE.Vector3());
+      const toMesh = new THREE.Vector3().subVectors(worldPos, origin);
+      const dist = toMesh.length();
+      toMesh.normalize();
+      const angle = dir.angleTo(toMesh);
+      const lit = angle < spotAngle && dist < spot.distance;
+
+      mesh.userData.lit = lit;
+      if (lit) {
+        mesh.userData.dwell += delta;
+        const targetOpacity = mesh.userData.solved ? 1 : Math.min(0.9, mesh.userData.dwell / 0.6);
+        mesh.material.opacity = targetOpacity;
+      } else {
+        mesh.userData.dwell = 0;
+        if (!mesh.userData.solved) mesh.material.opacity = Math.max(0.06, mesh.material.opacity - delta * 1.5);
+      }
+    });
+  });
+}
+
+function updateFloor1Logic(delta) {
+  if (door1Unlocked) return;
+  runeMeshes.forEach((mesh) => {
+    if (mesh.userData.solved) return;
+    if (mesh.userData.lit && mesh.userData.dwell > 0.6) {
+      const expectedShape = runeOrder[runeProgress];
+      if (mesh.userData.shape === expectedShape) {
+        mesh.userData.solved = true;
+        mesh.material.opacity = 1;
+        mesh.material.color.set(0x9fe3a0); // correct glow
+        runeProgress++;
+        mesh.userData.dwell = 0;
+        if (runeProgress >= runeOrder.length) {
+          door1Unlocked = true;
+          door1.material.color.set(0x3a5a3a);
+          door1.material.emissive = new THREE.Color(0x1a3a1a);
+        }
+      } else {
+        // wrong rune lit long enough -> dread flash & reset
+        dreadFlashTimer = 0.4;
+        runeProgress = 0;
+        runeMeshes.forEach((m) => {
+          if (m.userData.solved) {
+            m.userData.solved = false;
+            m.material.color.set(0xffffff);
+            m.material.opacity = 0.06;
+          }
+        });
+        mesh.userData.dwell = 0;
+      }
+    }
+  });
+}
+
+function updateFloor2Logic(delta) {
+  if (!loopFixed || floor2Solved) return;
+
+  // Stage 2: one hand must light the emblem so its shadow falls on the ring,
+  // while the other hand independently confirms by shining light onto that same ring.
+  const targetWorldPos = targetRing.getWorldPosition(new THREE.Vector3());
+  const emblemWorldPos = emblem.getWorldPosition(new THREE.Vector3());
+
+  let castingHand = null;
+  let confirmingHand = null;
+
+  [controller1, controller2].forEach((ctrl) => {
+    const spot = ctrl.userData.spot;
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(ctrl.quaternion);
+    const origin = ctrl.position;
+
+    // Is this hand lighting the emblem (a candidate "casting" hand)?
+    const toEmblem = new THREE.Vector3().subVectors(emblemWorldPos, origin);
+    const distToEmblem = toEmblem.length();
+    toEmblem.normalize();
+    const litEmblem = dir.angleTo(toEmblem) < spot.angle && distToEmblem < spot.distance;
+
+    if (litEmblem) {
+      // Project where the shadow would fall: continue the light ray through
+      // the emblem onward to the wall plane, and compare to the ring position.
+      const t = (CASTING_WALL_Z - origin.z) / dir.z;
+      if (t > 0) {
+        const hit = origin.clone().add(dir.clone().multiplyScalar(t));
+        const dist2D = Math.hypot(hit.x - targetWorldPos.x, hit.y - targetWorldPos.y);
+        if (dist2D < 0.35) castingHand = ctrl;
+      }
+    }
+
+    // Is this hand (independently) pointed steadily at the ring itself?
+    const toRing = new THREE.Vector3().subVectors(targetWorldPos, origin);
+    const distToRing = toRing.length();
+    toRing.normalize();
+    const litRing = dir.angleTo(toRing) < spot.angle && distToRing < spot.distance;
+    if (litRing) confirmingHand = ctrl;
+  });
+
+  const aligned = castingHand !== null && confirmingHand !== null && castingHand !== confirmingHand;
+  targetRing.material.opacity = aligned ? 0.6 : 0.18;
+
+  if (aligned) {
+    castingState.dwell += delta;
+    if (castingState.dwell > 0.8) {
+      floor2Solved = true;
+      targetRing.material.opacity = 1;
+      endMessage.visible = true;
+      playChime(880);
+    }
+  } else {
+    castingState.dwell = 0;
+  }
+}
+
+function applyDreadFlash(delta) {
+  if (dreadFlashTimer > 0) {
+    dreadFlashTimer -= delta;
+    const t = Math.max(0, dreadFlashTimer / 0.4);
+    scene.fog.color.setRGB(0.35 * t + 0.02, 0.05 * t + 0.03, 0.05 * t + 0.04);
+  } else {
+    scene.fog.color.set(0x05070a);
+  }
+}
+
+function render() {
+  const delta = clock.getDelta();
+  updateLanternIllumination(delta);
+  if (currentFloor === 1) updateFloor1Logic(delta);
+  if (currentFloor === 2) updateFloor2Logic(delta);
+  applyDreadFlash(delta);
+  renderer.render(scene, camera);
+}
+
+function animate() {
+  renderer.setAnimationLoop(render);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+</body>
+</html>
