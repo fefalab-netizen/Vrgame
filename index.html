@@ -52,7 +52,7 @@
     id="scene"
     vr-mode-ui="enabled: true"
     webxr="optionalFeatures: local-floor,hand-tracking; referenceSpaceType: local-floor"
-    renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true"
+    renderer="colorManagement: true; physicallyCorrectLights: false; antialias: true"
     fog="type: linear; color: #0b0c0e; near: 0.5; far: 8.8"
     background="color: #08090b"
     crypt-world
@@ -205,7 +205,7 @@
       <a-entity id="leftHand"
         laser-controls="hand: left"
         raycaster="objects: .clickable; far: 10; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
-        hand-flashlight="hand: left; color: #dce6d6; intensity: 2.4"
+        hand-flashlight="hand: left; color: #dce6d6; intensity: 6.5"
         pointer-interact>
       </a-entity>
 
@@ -219,7 +219,7 @@
   </a-scene>
 
   <script>
-    const Game = { level: 1, hasKey: false, doorOpen: false, entering: false };
+    const Game = { level: 1, hasKey: false, doorOpen: false, entering: false, slateOpen: false, swallowUntil: 0 };
 
     function mulberry32(a) {
       return function () {
@@ -342,73 +342,66 @@
       document.querySelector('#tex-door').src = paintIron(512, 1024, 13);
     }
 
-    /* Drive the spotlight from the SAME ray the laser uses, every frame. */
+    /* Raw THREE.SpotLight — A-Frame's <a-light> resets aim every frame. */
     AFRAME.registerComponent('hand-flashlight', {
       schema: {
         hand: { type: 'string' },
         color: { type: 'color', default: '#dce6d6' },
-        intensity: { type: 'number', default: 2.4 }
+        intensity: { type: 'number', default: 6 }
       },
       init: function () {
         this.base = this.data.intensity;
         this.focused = false;
         this.flicker = 1;
-        this._fallbackDir = new THREE.Vector3();
-        this._fallbackOrigin = new THREE.Vector3();
+        this.origin = new THREE.Vector3();
+        this.quat = new THREE.Quaternion();
+        this.fwd = new THREE.Vector3();
 
-        const light = document.createElement('a-light');
-        light.setAttribute('type', 'spot');
-        light.setAttribute('color', this.data.color);
-        light.setAttribute('intensity', this.base);
-        light.setAttribute('angle', 15);
-        light.setAttribute('penumbra', 0.4);
-        light.setAttribute('distance', 16);
-        light.setAttribute('decay', 1.15);
-        this.el.appendChild(light);
-        this.lightEl = light;
+        const col = new THREE.Color(this.data.color);
+        this.spot = new THREE.SpotLight(col, this.base, 20, THREE.MathUtils.degToRad(17), 0.4, 1);
+        this.target = new THREE.Object3D();
+        this.spot.target = this.target;
+        this.el.sceneEl.object3D.add(this.spot);
+        this.el.sceneEl.object3D.add(this.target);
 
         const lens = document.createElement('a-sphere');
-        lens.setAttribute('radius', 0.018);
-        lens.setAttribute('position', '0 0 0');
+        lens.setAttribute('radius', 0.016);
         lens.setAttribute('material', 'shader: flat; color: #e8f0e4; emissive: #c8d8c4; emissiveIntensity: 3');
         this.el.appendChild(lens);
 
-        const on = () => { this.focused = true; };
-        const off = () => { this.focused = false; };
-        this.el.addEventListener('triggerdown', on);
-        this.el.addEventListener('gripdown', on);
-        this.el.addEventListener('triggerup', off);
-        this.el.addEventListener('gripup', off);
+        this.el.addEventListener('triggerdown', () => { this.focused = true; });
+        this.el.addEventListener('gripdown', () => { this.focused = true; });
+        this.el.addEventListener('triggerup', () => { this.focused = false; });
+        this.el.addEventListener('gripup', () => { this.focused = false; });
       },
       tick: function (t) {
-        const threeLight = this.lightEl && this.lightEl.getObject3D('light');
-        if (!threeLight) return;
+        if (!this.spot) return;
+        if (Math.random() < 0.003) this.flicker = 0.35 + Math.random() * 0.2;
+        else this.flicker += (1 - this.flicker) * 0.12;
+        const wobble = 1 + Math.sin(t * 0.008 + (this.data.hand === 'left' ? 0 : 1.6)) * 0.02;
+        this.spot.intensity = (this.focused ? this.base * 1.5 : this.base) * this.flicker * wobble;
+        this.spot.angle = THREE.MathUtils.degToRad(this.focused ? 10 : 17);
 
-        if (Math.random() < 0.0035) this.flicker = 0.3 + Math.random() * 0.25;
-        else this.flicker += (1 - this.flicker) * 0.1;
-        const wobble = 1 + Math.sin(t * 0.008 + (this.data.hand === 'left' ? 0 : 1.7)) * 0.02;
-        threeLight.intensity = (this.focused ? this.base * 1.65 : this.base) * this.flicker * wobble;
-        threeLight.angle = THREE.MathUtils.degToRad(this.focused ? 9 : 15);
+        const obj = this.el.object3D;
+        obj.updateWorldMatrix(true, false);
+        obj.getWorldPosition(this.origin);
+        obj.getWorldQuaternion(this.quat);
+        this.fwd.set(0, 0, -1).applyQuaternion(this.quat);
 
-        let origin, dir;
         const rc = this.el.components.raycaster;
-        if (rc && rc.raycaster && rc.raycaster.ray) {
-          origin = rc.raycaster.ray.origin;
-          dir = rc.raycaster.ray.direction;
-        } else {
-          this.el.object3D.getWorldPosition(this._fallbackOrigin);
-          this.el.object3D.getWorldDirection(this._fallbackDir);
-          origin = this._fallbackOrigin;
-          dir = this._fallbackDir.multiplyScalar(-1);
+        if (rc && rc.raycaster && rc.raycaster.ray && rc.raycaster.ray.direction.lengthSq() > 0.1) {
+          this.origin.copy(rc.raycaster.ray.origin);
+          this.fwd.copy(rc.raycaster.ray.direction).normalize();
         }
 
-        if (!threeLight.target.parent) this.el.sceneEl.object3D.add(threeLight.target);
-        threeLight.target.position.set(
-          origin.x + dir.x * 12,
-          origin.y + dir.y * 12,
-          origin.z + dir.z * 12
-        );
-        threeLight.target.updateMatrixWorld();
+        this.spot.position.copy(this.origin);
+        this.target.position.copy(this.origin).addScaledVector(this.fwd, 16);
+        this.spot.updateMatrixWorld();
+        this.target.updateMatrixWorld();
+      },
+      remove: function () {
+        if (this.spot && this.spot.parent) this.spot.parent.remove(this.spot);
+        if (this.target && this.target.parent) this.target.parent.remove(this.target);
       }
     });
 
@@ -435,31 +428,29 @@
     AFRAME.registerComponent('pointer-interact', {
       init: function () {
         this._lock = 0;
-        const fire = () => {
+        const fire = (evt) => {
           const now = performance.now();
-          if (now - this._lock < 280) return;
-          const slate = document.querySelector('#slate');
-          const slateOn = slate && slate.getAttribute('visible') !== false && slate.object3D.visible;
-          const rc = this.el.components.raycaster;
-          const hits = rc && rc.intersections;
-          if (!hits || !hits.length) {
-            if (slateOn) {
-              this._lock = now;
-              hideSlate();
-            }
+          if (now < Game.swallowUntil) return;
+          if (now - this._lock < 250) return;
+          if (Game.slateOpen) {
+            this._lock = now;
+            hideSlate();
             return;
           }
+          const rc = this.el.components.raycaster;
+          const hits = rc && rc.intersections;
+          if (!hits || !hits.length) return;
           let el = hits[0].object.el;
           if (!el) return;
           while (el && !el.classList.contains('clickable')) el = el.parentEl;
-          if (!el) return;
+          if (!el || el.dataset.id === 'slate') return;
           this._lock = now;
           useHotspot(el.dataset.id, el);
         };
-        this.el.addEventListener('click', fire);
         this.el.addEventListener('triggerdown', fire);
         this.el.addEventListener('abuttondown', fire);
         this.el.addEventListener('xbuttondown', fire);
+        this.el.addEventListener('click', fire);
       }
     });
 
@@ -473,24 +464,29 @@
     });
 
     function hideSlate() {
+      Game.slateOpen = false;
+      Game.swallowUntil = performance.now() + 650;
       const slate = document.querySelector('#slate');
-      if (slate) slate.setAttribute('visible', false);
-      clearTimeout(window._slateTimer);
+      if (slate) {
+        slate.setAttribute('visible', false);
+        slate.object3D.visible = false;
+        slate.setAttribute('position', '0 -6 -1.2');
+      }
     }
 
     function showSlate(title, body) {
+      Game.slateOpen = true;
+      const slate = document.querySelector('#slate');
       document.querySelector('#slate-title').setAttribute('value', title);
       document.querySelector('#slate-body').setAttribute('value', body);
-      document.querySelector('#slate').setAttribute('visible', true);
-      clearTimeout(window._slateTimer);
+      slate.setAttribute('position', '0 -0.05 -1.2');
+      slate.setAttribute('visible', true);
+      slate.object3D.visible = true;
     }
 
     function useHotspot(id, el) {
-      if (!id) return;
-      if (id === 'slate') {
-        hideSlate();
-        return;
-      }
+      if (!id || id === 'slate') return;
+      if (performance.now() < Game.swallowUntil) return;
       tickSound();
       if (id === 'stone') {
         Game.hasKey = true;
