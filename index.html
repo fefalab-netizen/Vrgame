@@ -313,7 +313,7 @@
         material="shader: standard; src: #tex-floor; color: #2a2c2e; roughness: 1"></a-circle>
       <a-ring position="0 8.5 0" rotation="90 0 0" radius-inner="0.35" radius-outer="1.5"
         material="shader: standard; src: #tex-wall; color: #2c3034; side: double"></a-ring>
-      <a-circle position="0 8.52 0" rotation="90 0 0" radius="0.38"
+      <a-circle id="well-light" position="0 8.52 0" rotation="90 0 0" radius="0.38"
         material="shader: flat; color: #f3efe4; side: double"></a-circle>
       <a-sphere id="hot-wellmouth" class="clickable" position="0 6.8 0" radius="1.15"
         data-id="wellmouth"
@@ -347,8 +347,9 @@
             hover-glow></a-plane>
           <a-text value="DESCEND" align="center" position="0 -0.32 0.03" width="1.2" color="#c4cdc0"></a-text>
         </a-entity>
-        <a-entity id="vr-intro" visible="false" position="0 0 -1.85">
-          <a-video id="vr-intro-plane" src="#intro-asset" width="2.2" height="1.24"></a-video>
+        <a-entity id="vr-intro" visible="false" position="0 0 -1.15">
+          <a-video id="vr-intro-plane" src="#intro-asset" width="1.7" height="0.96"
+            material="shader: flat; depthTest: false"></a-video>
           <a-plane id="hot-skip-intro" class="clickable" position="0.85 -0.75 0.02" width="0.4" height="0.12"
             data-id="skip-intro-vr"
             material="shader: flat; color: #121416"></a-plane>
@@ -1425,34 +1426,41 @@
     }
     function playOutro() {
       Game.playingOutro = true;
-      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      Game.climbY = Math.min(Game.climbY, 3.4);
+      Game.climbVel = 0;
+      const rig = document.querySelector('#rig');
+      if (rig) rig.setAttribute('position', '0 ' + Game.climbY + ' 0');
+      const mouth = document.querySelector('#hot-wellmouth');
+      if (mouth) {
+        mouth.setAttribute('visible', false);
+        mouth.classList.remove('clickable');
+      }
+      const wellLight = document.querySelector('#well-light');
+      if (wellLight) wellLight.setAttribute('visible', false);
       const asset = document.getElementById('outro-asset');
       const wrap = document.getElementById('intro-wrap');
       const flat = document.getElementById('intro');
-      const status = document.getElementById('intro-status');
       const vrIntro = document.querySelector('#vr-intro');
       const plane = document.querySelector('#vr-intro-plane');
       const skip = document.querySelector('#hot-skip-intro');
       if (skip) skip.classList.add('clickable');
+      if (plane) plane.setAttribute('src', '#outro-asset');
+      if (vrIntro) vrIntro.setAttribute('visible', true);
       if (asset) {
         asset.onended = () => endOutro();
-        asset.currentTime = 0;
+        try { asset.currentTime = 0; } catch (e) {}
+        const p = asset.play();
+        if (p && p.catch) p.catch(() => endOutro());
       }
-      if (inVR && vrIntro) {
-        if (plane) plane.setAttribute('src', '#outro-asset');
-        vrIntro.setAttribute('visible', true);
-        if (asset && asset.play) asset.play().catch(() => endOutro());
-        return;
+      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      if (!inVR) {
+        wrap.classList.add('on');
+        if (flat) {
+          flat.src = 'Outro.mp4';
+          flat.onended = () => endOutro();
+          flat.play().catch(() => {});
+        }
       }
-      wrap.classList.add('on');
-      if (flat) {
-        flat.src = 'Outro.mp4';
-        flat.onended = () => endOutro();
-        flat.play().catch(() => {
-          if (status) status.textContent = 'Tap the video, or Skip.';
-        });
-      }
-      if (asset && asset.play) asset.play().catch(() => {});
     }
     function endOutro() {
       Game.playingOutro = false;
