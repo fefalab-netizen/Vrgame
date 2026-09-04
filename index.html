@@ -310,12 +310,14 @@
         material="shader: standard; src: #tex-wall; color: #3a3e42; roughness: 0.98; side: back; repeat: 2 3"></a-cylinder>
       <a-circle class="solid" radius="1.45" position="0 0 0" rotation="-90 0 0"
         material="shader: standard; src: #tex-floor; color: #2a2c2e; roughness: 1"></a-circle>
-      <a-ring position="0 8.5 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="1.5"
+      <a-ring position="0 8.5 0" rotation="90 0 0" radius-inner="0.35" radius-outer="1.5"
         material="shader: standard; src: #tex-wall; color: #2c3034; side: double"></a-ring>
-      <a-circle id="hot-wellmouth" class="clickable" position="0 8.4 0" rotation="-90 0 0" radius="0.85"
+      <a-circle position="0 8.52 0" rotation="90 0 0" radius="0.38"
+        material="shader: flat; color: #f3efe4; side: double"></a-circle>
+      <a-sphere id="hot-wellmouth" class="clickable" position="0 6.8 0" radius="1.15"
         data-id="wellmouth"
-        material="shader: flat; color: #e8e4d8; emissive: #f2eee4; emissiveIntensity: 2.2"
-        hover-glow></a-circle>
+        material="shader: flat; color: #e8e4d8; opacity: 0.22; transparent: true; side: double"
+        hover-glow></a-sphere>
       <a-entity position="0 8.4 0" light="type: point; color: #e8e2d4; intensity: 1.6; distance: 12; decay: 1.1"></a-entity>
       <a-entity position="0 6 0" light="type: spot; color: #f0ece0; intensity: 1.1; angle: 18; penumbra: 0.45; distance: 10" rotation="90 0 0"></a-entity>
     </a-entity>
@@ -324,7 +326,7 @@
       <a-camera id="cam" look-controls="pointerLockEnabled: true" wasd-controls="enabled: false" position="0 1.6 0">
         <a-entity
           cursor="fuse: false; rayOrigin: mouse"
-          raycaster="objects: .clickable, .solid; far: 10; interval: 50"
+          raycaster="objects: .clickable, .solid; far: 28; interval: 50"
           pointer-interact>
           <a-ring position="0 0 -0.9" radius-inner="0.006" radius-outer="0.010"
             material="shader: flat; color: #c8d0c6; opacity: 0.7"></a-ring>
@@ -357,7 +359,7 @@
 
       <a-entity id="leftHand"
         laser-controls="hand: left"
-        raycaster="objects: .clickable, .solid; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        raycaster="objects: .clickable, .solid; far: 28; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: left; color: #dce6d6; intensity: 6.5"
         keep-ray
         pointer-interact>
@@ -365,7 +367,7 @@
 
       <a-entity id="rightHand"
         laser-controls="hand: right"
-        raycaster="objects: .clickable, .solid; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        raycaster="objects: .clickable, .solid; far: 28; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: right; color: #e4ece2; intensity: 6.5"
         keep-ray
         pointer-interact>
@@ -606,7 +608,7 @@
         const apply = () => {
           this.el.setAttribute('raycaster', {
             objects: '.clickable, .solid',
-            far: 12,
+            far: 28,
             showLine: true,
             lineColor: '#9aaa96',
             lineOpacity: 0.85
@@ -626,6 +628,15 @@
           const rc = this.el.components.raycaster;
           const hits = rc && rc.intersections;
           if (!hits || !hits.length) return null;
+          if (Game.level === 4) {
+            for (let i = 0; i < hits.length; i++) {
+              let e = hits[i].object.el;
+              while (e) {
+                if (e.dataset && e.dataset.id === 'wellmouth') return e;
+                e = e.parentEl;
+              }
+            }
+          }
           let el = hits[0].object.el;
           if (!el) return null;
           if (el.classList.contains('solid') && !el.classList.contains('clickable')) return null;
@@ -638,12 +649,25 @@
         };
         const fire = () => {
           const now = performance.now();
-          if (now - this._lock < 200) return;
+          if (now - this._lock < 120) return;
           const target = hotspotFromRay();
           if (target) {
             this._lock = now;
             useHotspot(target.dataset.id, target);
             return;
+          }
+          if (Game.level === 4 && !Game.climbDone) {
+            const cam = document.querySelector('#cam');
+            if (cam) {
+              const fwd = new THREE.Vector3();
+              cam.object3D.getWorldDirection(fwd);
+              if (-fwd.y > 0.42) {
+                this._lock = now;
+                const mouth = document.querySelector('#hot-wellmouth');
+                useHotspot('wellmouth', mouth);
+                return;
+              }
+            }
           }
           if (Game.slateOpen) {
             this._lock = now;
@@ -691,10 +715,10 @@
 
     AFRAME.registerComponent('choir-screech', {
       init: function () {
-        this._played = false;
         this._cool = 0;
         this._pos = new THREE.Vector3();
         this._cam = new THREE.Vector3();
+        this._fwd = new THREE.Vector3();
       },
       tick: function (t, dt) {
         if (Game.level !== 2 || !Game.started) return;
@@ -703,11 +727,15 @@
         if (!cam) return;
         this.el.object3D.getWorldPosition(this._pos);
         cam.object3D.getWorldPosition(this._cam);
+        cam.object3D.getWorldDirection(this._fwd);
+        this._fwd.multiplyScalar(-1);
+        const to = this._pos.clone().sub(this._cam).normalize();
+        const looking = this._fwd.dot(to) > 0.62;
         const dist = this._pos.distanceTo(this._cam);
         const aimed = rayHitsId('#leftHand', 'idol-choir') || rayHitsId('#rightHand', 'idol-choir');
-        if ((dist < 3.15 || aimed) && this._cool <= 0) {
-          screech();
-          this._cool = 14000;
+        if ((looking || aimed || dist < 3.2) && this._cool <= 0) {
+          jumpscareChoir();
+          this._cool = 18000;
         }
       }
     });
@@ -1187,14 +1215,31 @@
       o.start(); o.stop(ctx.currentTime + 2.1);
     }
     function tickSound() { drip(380, 0.035); }
+    function jumpscareChoir() {
+      const flash = document.querySelector('#flash-horror');
+      if (flash) {
+        flash.setAttribute('material', 'src', '#tex-choir');
+        flash.setAttribute('visible', true);
+        setTimeout(() => flash.setAttribute('visible', false), 90);
+        setTimeout(() => flash.setAttribute('visible', true), 140);
+        setTimeout(() => {
+          flash.setAttribute('visible', false);
+          flash.setAttribute('material', 'src', '#tex-horror');
+        }, 280);
+      }
+      document.getElementById('fade').classList.add('on');
+      setTimeout(() => document.getElementById('fade').classList.remove('on'), 70);
+      screech();
+    }
+
     function screech() {
       const ctx = ensureAudio();
       const t0 = ctx.currentTime;
-      const dur = 1.8;
+      const dur = 1.35;
       const out = ctx.createGain();
       out.gain.setValueAtTime(0.0001, t0);
-      out.gain.exponentialRampToValueAtTime(0.28, t0 + 0.04);
-      out.gain.setValueAtTime(0.22, t0 + 0.25);
+      out.gain.exponentialRampToValueAtTime(0.85, t0 + 0.012);
+      out.gain.setValueAtTime(0.55, t0 + 0.18);
       out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       out.connect(ctx.destination);
 
@@ -1213,11 +1258,12 @@
         o.start(t0 + delay);
         o.stop(t0 + dur);
       };
-      makeOsc('sawtooth', 55, 28, 0.55, 0);
-      makeOsc('sawtooth', 55 * 1.498, 41, 0.28, 0.02);
-      makeOsc('square', 110, 36, 0.12, 0.05);
-      makeOsc('sawtooth', 740, 90, 0.07, 0.08);
-      makeOsc('triangle', 220 * 1.498, 48, 0.16, 0);
+      makeOsc('sawtooth', 42, 22, 0.9, 0);
+      makeOsc('sawtooth', 42 * 1.498, 30, 0.55, 0);
+      makeOsc('square', 84, 28, 0.28, 0);
+      makeOsc('sawtooth', 2100, 380, 0.35, 0);
+      makeOsc('square', 1750, 220, 0.22, 0.01);
+      makeOsc('triangle', 220 * 1.498, 40, 0.2, 0);
 
       const lfo = ctx.createOscillator();
       lfo.type = 'sine';
