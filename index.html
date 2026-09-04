@@ -59,6 +59,11 @@
       padding: 10px 18px; letter-spacing: 0.18em; font-family: Georgia, serif;
       font-size: 11px; text-transform: uppercase; cursor: pointer;
     }
+    #intro-status {
+      position: absolute; left: 18px; bottom: 18px;
+      color: #8a928c; font-family: Georgia, serif; font-size: 13px;
+      max-width: 70%;
+    }
   </style>
 </head>
 <body>
@@ -72,9 +77,8 @@
     </div>
   </div>
   <div id="intro-wrap">
-    <video id="intro" playsinline webkit-playsinline preload="auto">
-      <source src="Intro1.mp4" type="video/mp4">
-    </video>
+    <video id="intro" src="Intro1.mp4" playsinline webkit-playsinline preload="auto" controls></video>
+    <div id="intro-status"></div>
     <button id="skip-intro" type="button">Skip</button>
   </div>
   <div id="hint">Point until it glows · trigger to read · B / Y to close</div>
@@ -111,17 +115,17 @@
     <a-entity id="ember" position="0 0.2 -3.65" light="type: point; color: #3a4a3a; intensity: 0.16; distance: 3.2; decay: 2"></a-entity>
 
     <a-entity id="level-1">
-      <a-plane class="stone-wall" width="7" height="3.1" position="0 1.55 -3.5"
+      <a-plane class="solid stone-wall" width="7" height="3.1" position="0 1.55 -3.5"
         material="shader: standard; src: #tex-wall; roughness: 0.98; metalness: 0.04; color: #7a7d80; repeat: 2 1.1"></a-plane>
-      <a-plane class="stone-wall" width="7" height="3.1" position="0 1.55 3.5" rotation="0 180 0"
+      <a-plane class="solid stone-wall" width="7" height="3.1" position="0 1.55 3.5" rotation="0 180 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; metalness: 0.04; color: #6e7174; repeat: 2 1.1"></a-plane>
-      <a-plane class="stone-wall" width="7" height="3.1" position="-3.5 1.55 0" rotation="0 90 0"
+      <a-plane class="solid stone-wall" width="7" height="3.1" position="-3.5 1.55 0" rotation="0 90 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; metalness: 0.04; color: #74777a; repeat: 2 1.1"></a-plane>
-      <a-plane class="stone-wall" width="7" height="3.1" position="3.5 1.55 0" rotation="0 -90 0"
+      <a-plane class="solid stone-wall" width="7" height="3.1" position="3.5 1.55 0" rotation="0 -90 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; metalness: 0.04; color: #686b6e; repeat: 2 1.1"></a-plane>
-      <a-plane width="7" height="7" position="0 0 0" rotation="-90 0 0"
+      <a-plane class="solid" width="7" height="7" position="0 0 0" rotation="-90 0 0"
         material="shader: standard; src: #tex-floor; roughness: 0.99; color: #4e5154; repeat: 3 3"></a-plane>
-      <a-plane width="7" height="7" position="0 3.1 0" rotation="90 0 0"
+      <a-plane class="solid" width="7" height="7" position="0 3.1 0" rotation="90 0 0"
         material="shader: standard; src: #tex-ceil; roughness: 1; color: #3c3f42; repeat: 3 3"></a-plane>
 
       <a-box position="-2.4 0.22 -3.28" width="1.6" height="0.44" depth="0.42"
@@ -187,17 +191,17 @@
     </a-entity>
 
     <a-entity id="level-2" visible="false">
-      <a-plane width="8" height="3.4" position="0 1.7 -4"
+      <a-plane class="solid" width="8" height="3.4" position="0 1.7 -4"
         material="shader: standard; src: #tex-wall; roughness: 0.98; color: #5a5e62; repeat: 2.2 1.2"></a-plane>
-      <a-plane width="8" height="3.4" position="0 1.7 4" rotation="0 180 0"
+      <a-plane class="solid" width="8" height="3.4" position="0 1.7 4" rotation="0 180 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; color: #505458; repeat: 2.2 1.2"></a-plane>
-      <a-plane width="8" height="3.4" position="-4 1.7 0" rotation="0 90 0"
+      <a-plane class="solid" width="8" height="3.4" position="-4 1.7 0" rotation="0 90 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; color: #55595d; repeat: 2.2 1.2"></a-plane>
-      <a-plane width="8" height="3.4" position="4 1.7 0" rotation="0 -90 0"
+      <a-plane class="solid" width="8" height="3.4" position="4 1.7 0" rotation="0 -90 0"
         material="shader: standard; src: #tex-wall; roughness: 0.98; color: #4c5054; repeat: 2.2 1.2"></a-plane>
-      <a-plane width="8" height="8" position="0 0 0" rotation="-90 0 0"
+      <a-plane class="solid" width="8" height="8" position="0 0 0" rotation="-90 0 0"
         material="shader: standard; src: #tex-floor; roughness: 0.99; color: #3a3d40; repeat: 3 3"></a-plane>
-      <a-plane width="8" height="8" position="0 3.4 0" rotation="90 0 0"
+      <a-plane class="solid" width="8" height="8" position="0 3.4 0" rotation="90 0 0"
         material="shader: standard; src: #tex-ceil; roughness: 1; color: #2c2f32; repeat: 3 3"></a-plane>
 
       <a-box position="0 0.55 -3.55" width="1.5" height="1.1" depth="0.45"
@@ -210,8 +214,7 @@
         data-id="altar"
         material="shader: standard; color: #2a2e30; metalness: 0.25; roughness: 0.7; emissive: #1a2a1c; emissiveIntensity: 0.28"
         hover-glow></a-box>
-      <a-text value="FIRST THE THROAT" align="center" position="0 1.42 -3.18" width="2.6" color="#8a9488"></a-text>
-      <a-text value="THEN THE ANGLE  /  THEN THE DROWNED  /  LAST THE CHOIR" align="center" position="0 1.28 -3.18" width="3.4" color="#6a736c"></a-text>
+      <!-- altar labels removed -->
 
       <!-- Paintings on the four walls. Same rite ids. -->
       <a-entity position="-1.85 1.55 -3.88">
@@ -220,7 +223,7 @@
           data-id="idol-well"
           material="shader: standard; src: #tex-throat; roughness: 0.88; metalness: 0; emissive: #1a2a1c; emissiveIntensity: 0.08"
           hover-glow></a-plane>
-        <a-text value="THROAT" align="center" position="0 -0.82 0.02" width="1.5" color="#7a8478"></a-text>
+      
       </a-entity>
 
       <a-entity position="1.85 1.55 -3.88">
@@ -229,7 +232,7 @@
           data-id="idol-angle"
           material="shader: standard; src: #tex-angle; roughness: 0.88; metalness: 0; emissive: #1a2a1c; emissiveIntensity: 0.08"
           hover-glow></a-plane>
-        <a-text value="ANGLE" align="center" position="0 -0.82 0.02" width="1.5" color="#7a8478"></a-text>
+      
       </a-entity>
 
       <a-entity position="-3.88 1.55 1.6" rotation="0 90 0">
@@ -238,7 +241,7 @@
           data-id="idol-cleric"
           material="shader: standard; src: #tex-drowned; roughness: 0.88; metalness: 0; emissive: #1a2a1c; emissiveIntensity: 0.08"
           hover-glow></a-plane>
-        <a-text value="DROWNED" align="center" position="0 -0.82 0.02" width="1.7" color="#7a8478"></a-text>
+      
       </a-entity>
 
       <a-entity position="3.88 1.55 1.6" rotation="0 -90 0">
@@ -247,7 +250,7 @@
           data-id="idol-choir"
           material="shader: standard; src: #tex-choir; roughness: 0.88; metalness: 0; emissive: #1a2a1c; emissiveIntensity: 0.08"
           hover-glow></a-plane>
-        <a-text value="CHOIR" align="center" position="0 -0.82 0.02" width="1.5" color="#7a8478"></a-text>
+      
       </a-entity>
     </a-entity>
 
@@ -255,7 +258,7 @@
       <a-camera id="cam" look-controls="pointerLockEnabled: true" wasd-controls="enabled: false" position="0 1.6 0">
         <a-entity
           cursor="fuse: false; rayOrigin: mouse"
-          raycaster="objects: .clickable; far: 10; interval: 50"
+          raycaster="objects: .clickable, .solid; far: 10; interval: 50"
           pointer-interact>
           <a-ring position="0 0 -0.9" radius-inner="0.006" radius-outer="0.010"
             material="shader: flat; color: #c8d0c6; opacity: 0.7"></a-ring>
@@ -268,7 +271,7 @@
 
       <a-entity id="leftHand"
         laser-controls="hand: left"
-        raycaster="objects: .clickable; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        raycaster="objects: .clickable, .solid; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: left; color: #dce6d6; intensity: 6.5"
         keep-ray
         pointer-interact>
@@ -276,7 +279,7 @@
 
       <a-entity id="rightHand"
         laser-controls="hand: right"
-        raycaster="objects: .clickable; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
+        raycaster="objects: .clickable, .solid; far: 12; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: right; color: #e4ece2; intensity: 6.5"
         keep-ray
         pointer-interact>
@@ -508,7 +511,7 @@
       init: function () {
         const apply = () => {
           this.el.setAttribute('raycaster', {
-            objects: '.clickable',
+            objects: '.clickable, .solid',
             far: 12,
             showLine: true,
             lineColor: '#9aaa96',
@@ -530,7 +533,12 @@
           const hits = rc && rc.intersections;
           if (!hits || !hits.length) return null;
           let el = hits[0].object.el;
-          while (el && !el.classList.contains('clickable')) el = el.parentEl;
+          if (!el) return null;
+          if (el.classList.contains('solid') && !el.classList.contains('clickable')) return null;
+          while (el && !el.classList.contains('clickable')) {
+            if (el.classList && el.classList.contains('solid')) return null;
+            el = el.parentEl;
+          }
           if (!el || !el.dataset.id || el.dataset.id === 'slate') return null;
           return el;
         };
@@ -762,8 +770,7 @@
       setTimeout(() => {
         hideSlate();
         document.getElementById('crossing').classList.add('on');
-        document.querySelector('#level-1').setAttribute('visible', false);
-        document.querySelector('#level-2').setAttribute('visible', true);
+        setLevelLive(2);
         document.querySelector('#ember').setAttribute('light', 'color: #2a3a32; intensity: 0.16; distance: 5');
         document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #07080a; near: 0.3; far: 7.2');
         document.querySelector('#scene').setAttribute('background', 'color: #050608');
@@ -948,6 +955,22 @@
       o1.start(); o2.start();
     }
 
+    function setLevelLive(n) {
+      const l1 = document.getElementById('level-1');
+      const l2 = document.getElementById('level-2');
+      const on1 = n === 1;
+      l1.setAttribute('visible', on1);
+      l2.setAttribute('visible', !on1);
+      l1.querySelectorAll('[data-id]').forEach((el) => {
+        if (on1) el.classList.add('clickable');
+        else el.classList.remove('clickable');
+      });
+      l2.querySelectorAll('[data-id]').forEach((el) => {
+        if (!on1) el.classList.add('clickable');
+        else el.classList.remove('clickable');
+      });
+    }
+
     buildTextures();
     function beginVault() {
       document.getElementById('boot').style.display = 'none';
@@ -955,19 +978,32 @@
       const v = document.getElementById('intro');
       try { v.pause(); } catch (e) {}
       document.getElementById('scene').setAttribute('visible', true);
+      setLevelLive(1);
       startAmbience();
     }
     function playIntroThenVault() {
       document.getElementById('boot').style.display = 'none';
       const wrap = document.getElementById('intro-wrap');
       const v = document.getElementById('intro');
+      const status = document.getElementById('intro-status');
       wrap.classList.add('on');
-      v.currentTime = 0;
-      const go = () => beginVault();
-      v.onended = go;
-      v.onerror = go;
-      const playTry = v.play();
-      if (playTry && playTry.catch) playTry.catch(go);
+      v.onended = () => beginVault();
+      v.onerror = () => {
+        status.textContent = 'Intro1.mp4 did not load. The file on GitHub is empty or not a real video — re-upload it, then Skip.';
+      };
+      fetch('Intro1.mp4', { method: 'HEAD' }).then((res) => {
+        const len = parseInt(res.headers.get('content-length') || '0', 10);
+        if (!res.ok || len < 1000) {
+          status.textContent = 'Intro1.mp4 on the site is ' + len + ' bytes. Re-upload the real video next to index.html.';
+          return;
+        }
+        v.src = 'Intro1.mp4';
+        v.play().catch(() => {
+          status.textContent = 'Tap the video to play, or Skip.';
+        });
+      }).catch(() => {
+        status.textContent = 'Could not reach Intro1.mp4. Upload it to the repo root.';
+      });
     }
     document.getElementById('enter').addEventListener('click', playIntroThenVault);
     document.getElementById('skip-intro').addEventListener('click', beginVault);
