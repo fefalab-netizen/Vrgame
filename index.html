@@ -113,6 +113,7 @@
       <img id="tex-horror" src="paintings/horror.jpg" crossorigin="anonymous">
       <video id="intro-asset" src="Intro1.mp4" playsinline webkit-playsinline preload="auto"></video>
       <video id="outro-asset" src="Outro.mp4" playsinline webkit-playsinline preload="auto"></video>
+      <video id="outro2-asset" src="Outro2.mp4" playsinline webkit-playsinline preload="auto"></video>
     </a-assets>
 
     <a-entity light="type: ambient; color: #121416; intensity: 0.07"></a-entity>
@@ -322,6 +323,22 @@
         hover-glow></a-sphere>
       <a-entity position="0 8.4 0" light="type: point; color: #e8e2d4; intensity: 1.6; distance: 12; decay: 1.1"></a-entity>
       <a-entity position="0 6 0" light="type: spot; color: #f0ece0; intensity: 1.1; angle: 18; penumbra: 0.45; distance: 10" rotation="90 0 0"></a-entity>
+      <a-entity id="warn-hurry" visible="false">
+        <a-text value="HURRY!!!" align="center" position="0 2.3 -1.28" rotation="0 0 0" width="5" color="#c81e1e"></a-text>
+        <a-text value="HURRY!!!" align="center" position="0 3.8 1.28" rotation="0 180 0" width="5" color="#a81818"></a-text>
+        <a-text value="HURRY!!!" align="center" position="-1.28 2.9 0" rotation="0 90 0" width="5" color="#d02424"></a-text>
+        <a-text value="HURRY!!!" align="center" position="1.28 4.6 0" rotation="0 -90 0" width="5" color="#b01616"></a-text>
+        <a-text value="HURRY!!!" align="center" position="0.9 5.4 -0.9" rotation="0 -45 0" width="4.2" color="#c81e1e"></a-text>
+        <a-text value="HURRY!!!" align="center" position="-0.9 1.8 0.9" rotation="0 135 0" width="4.2" color="#8a1010"></a-text>
+      </a-entity>
+      <a-entity id="warn-look" visible="false">
+        <a-text value="LOOK UP!!" align="center" position="0 5.2 -1.28" rotation="0 0 0" width="5.2" color="#e8e4d8"></a-text>
+        <a-text value="LOOK UP!!" align="center" position="0 2.6 1.28" rotation="0 180 0" width="5.2" color="#dcd4c4"></a-text>
+        <a-text value="LOOK UP!!" align="center" position="-1.28 4.1 0" rotation="0 90 0" width="5.2" color="#f0ece0"></a-text>
+        <a-text value="LOOK UP!!" align="center" position="1.28 3.2 0" rotation="0 -90 0" width="5.2" color="#c8c0b0"></a-text>
+        <a-text value="LOOK UP!!" align="center" position="0.85 6.1 0.85" rotation="0 -135 0" width="4.4" color="#e8e4d8"></a-text>
+        <a-text value="LOOK UP!!" align="center" position="-0.85 6.4 -0.85" rotation="0 45 0" width="4.4" color="#d4ccbc"></a-text>
+      </a-entity>
     </a-entity>
 
     <a-entity id="rig" position="0 0 0">
@@ -365,6 +382,13 @@
             material="shader: flat; color: #ffffff; depthTest: false"></a-plane>
           <a-text id="end-title" value="YOU STOOD STILL" align="center" position="0 0.18 0.01" width="1.4" color="#1a1c1e"></a-text>
           <a-text id="end-body" value="" align="center" position="0 -0.08 0.01" width="1.35" wrap-count="34" color="#2a2e32"></a-text>
+        </a-entity>
+        <a-text id="well-clock" value="" align="center" position="0 -0.38 -1.05" width="1.1" color="#e8e4d8" visible="false"></a-text>
+        <a-entity id="death-card" visible="false" position="0 0 -1.15">
+          <a-plane width="4.2" height="3.2" position="0 0 -0.03"
+            material="shader: flat; color: #6b0b14; depthTest: false"></a-plane>
+          <a-text value="THE THING HAS CONSUMED YOU" align="center" position="0 0.12 0.01" width="1.7" color="#f3e6e6"></a-text>
+          <a-text value="Better luck next time." align="center" position="0 -0.12 0.01" width="1.4" color="#e8c8c8"></a-text>
         </a-entity>
         <a-image id="jump-choir" src="#tex-choir" width="1.35" height="2.0" position="0 0 -0.62" visible="false"></a-image>
         <a-image id="jump-horror" src="#tex-horror" width="2.15" height="1.35" position="0 0 -0.62" visible="false"></a-image>
@@ -412,7 +436,11 @@
       climbVel: 0,
       lastClimb: 0,
       climbDone: false,
-      playingOutro: false
+      playingOutro: false,
+      wellTicking: false,
+      wellLeft: 25,
+      wellAcc: 0,
+      dead: false
     };
 
     function mulberry32(a) {
@@ -796,8 +824,30 @@
 
     AFRAME.registerComponent('well-climb', {
       tick: function (t, dt) {
-        if (Game.level !== 4 || Game.climbDone || Game.entering) return;
+        if (Game.level !== 4 || Game.entering || Game.dead || Game.playingOutro) return;
         const ms = dt || 16;
+        if (Game.wellTicking && !Game.climbDone) {
+          Game.wellAcc += ms;
+          if (Game.wellAcc >= 1000) {
+            Game.wellAcc -= 1000;
+            Game.wellLeft -= 1;
+            const clock = document.querySelector('#well-clock');
+            if (clock) clock.setAttribute('value', String(Math.max(0, Game.wellLeft)));
+            if (Game.wellLeft === 22) {
+              const h = document.querySelector('#warn-hurry');
+              if (h) h.setAttribute('visible', true);
+            }
+            if (Game.wellLeft === 19) {
+              const l = document.querySelector('#warn-look');
+              if (l) l.setAttribute('visible', true);
+            }
+            if (Game.wellLeft <= 0) {
+              dieInWell();
+              return;
+            }
+          }
+        }
+        if (Game.climbDone) return;
         const recent = (performance.now() - Game.lastClimb) < 420;
         if (recent) {
           Game.climbVel = Math.min(0.95, Game.climbVel + 0.0045 * ms);
@@ -932,7 +982,8 @@
         return;
       }
       if (id === 'skip-intro-vr') {
-        if (Game.playingOutro) endOutro();
+        if (Game.dead) showDeathCard();
+        else if (Game.playingOutro) endOutro();
         else beginVault();
         return;
       }
@@ -1164,6 +1215,15 @@
         Game.climbY = 0;
         Game.climbVel = 0;
         Game.lastClimb = 0;
+        Game.wellLeft = 25;
+        Game.wellAcc = 0;
+        Game.wellTicking = true;
+        Game.dead = false;
+        const clock = document.querySelector('#well-clock');
+        if (clock) {
+          clock.setAttribute('value', '25');
+          clock.setAttribute('visible', true);
+        }
       }, 1600);
     }
 
@@ -1373,12 +1433,45 @@
     }
 
     function reachWellExit() {
-      if (Game.climbDone) return;
+      if (Game.climbDone || Game.dead) return;
       Game.climbDone = true;
+      Game.wellTicking = false;
       Game.climbVel = 0;
+      const clock = document.querySelector('#well-clock');
+      if (clock) clock.setAttribute('visible', false);
+      const h = document.querySelector('#warn-hurry');
+      const l = document.querySelector('#warn-look');
+      if (h) h.setAttribute('visible', false);
+      if (l) l.setAttribute('visible', false);
       hideSlate();
       document.getElementById('hint').textContent = 'The mouth of the well.';
       playOutro();
+    }
+
+    function dieInWell() {
+      if (Game.dead || Game.climbDone) return;
+      Game.dead = true;
+      Game.wellTicking = false;
+      Game.climbVel = 0;
+      const clock = document.querySelector('#well-clock');
+      if (clock) clock.setAttribute('visible', false);
+      hideSlate();
+      playDeathOutro();
+    }
+
+    function showDeathCard() {
+      Game.playingOutro = false;
+      document.getElementById('intro-wrap').classList.remove('on');
+      const vrIntro = document.querySelector('#vr-intro');
+      if (vrIntro) vrIntro.setAttribute('visible', false);
+      ['outro2-asset', 'intro'].forEach((id) => {
+        const v = document.getElementById(id);
+        try { if (v) v.pause(); } catch (e) {}
+      });
+      const skip = document.querySelector('#hot-skip-intro');
+      if (skip) skip.classList.remove('clickable');
+      const card = document.querySelector('#death-card');
+      if (card) card.setAttribute('visible', true);
     }
     function playTone(type, startF, endF, dur, gain, filterType, filterF, q) {
       const ctx = ensureAudio();
@@ -1532,6 +1625,36 @@
         }
       }
     }
+    function playDeathOutro() {
+      Game.playingOutro = true;
+      hideSlate();
+      const clock = document.querySelector('#well-clock');
+      if (clock) clock.setAttribute('visible', false);
+      const asset = document.getElementById('outro2-asset');
+      const wrap = document.getElementById('intro-wrap');
+      const flat = document.getElementById('intro');
+      const vrIntro = document.querySelector('#vr-intro');
+      const plane = document.querySelector('#vr-intro-plane');
+      const skip = document.querySelector('#hot-skip-intro');
+      if (skip) skip.classList.add('clickable');
+      if (plane) plane.setAttribute('src', '#outro2-asset');
+      if (vrIntro) vrIntro.setAttribute('visible', true);
+      if (asset) {
+        asset.onended = () => showDeathCard();
+        try { asset.currentTime = 0; } catch (e) {}
+        const p = asset.play();
+        if (p && p.catch) p.catch(() => showDeathCard());
+      }
+      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      if (!inVR) {
+        wrap.classList.add('on');
+        if (flat) {
+          flat.src = 'Outro2.mp4';
+          flat.onended = () => showDeathCard();
+          flat.play().catch(() => showDeathCard());
+        }
+      }
+    }
     function endOutro() {
       Game.playingOutro = false;
       hideSlate();
@@ -1589,7 +1712,8 @@
     }
     document.getElementById('enter').addEventListener('click', playIntroThenVault);
     document.getElementById('skip-intro').addEventListener('click', () => {
-      if (Game.playingOutro) endOutro();
+      if (Game.dead) showDeathCard();
+      else if (Game.playingOutro) endOutro();
       else beginVault();
     });
   </script>
