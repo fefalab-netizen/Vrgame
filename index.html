@@ -97,7 +97,8 @@
     fog="type: linear; color: #0b0c0e; near: 0.5; far: 8.8"
     background="color: #08090b"
     crypt-world
-    visible="false">
+    double-beam
+    visible="true">
 
     <a-assets timeout="15000">
       <img id="tex-wall" crossorigin="anonymous">
@@ -108,13 +109,14 @@
       <img id="tex-angle" src="paintings/angle.jpg" crossorigin="anonymous">
       <img id="tex-drowned" src="paintings/drowned.jpg" crossorigin="anonymous">
       <img id="tex-choir" src="paintings/choir.jpg" crossorigin="anonymous">
+      <video id="intro-asset" src="Intro1.mp4" playsinline webkit-playsinline preload="auto"></video>
     </a-assets>
 
     <a-entity light="type: ambient; color: #121416; intensity: 0.07"></a-entity>
     <a-entity light="type: hemisphere; skyColor: #1a1e20; groundColor: #070809; intensity: 0.08"></a-entity>
     <a-entity id="ember" position="0 0.2 -3.65" light="type: point; color: #3a4a3a; intensity: 0.16; distance: 3.2; decay: 2"></a-entity>
 
-    <a-entity id="level-1">
+    <a-entity id="level-1" visible="false" position="0 -80 0">
       <a-plane class="solid stone-wall" width="7" height="3.1" position="0 1.55 -3.5"
         material="shader: standard; src: #tex-wall; roughness: 0.98; metalness: 0.04; color: #7a7d80; repeat: 2 1.1"></a-plane>
       <a-plane class="solid stone-wall" width="7" height="3.1" position="0 1.55 3.5" rotation="0 180 0"
@@ -190,7 +192,7 @@
         hover-glow></a-box>
     </a-entity>
 
-    <a-entity id="level-2" visible="false">
+    <a-entity id="level-2" visible="false" position="0 -80 0">
       <a-plane class="solid" width="8" height="3.4" position="0 1.7 -4"
         material="shader: standard; src: #tex-wall; roughness: 0.98; color: #5a5e62; repeat: 2.2 1.2"></a-plane>
       <a-plane class="solid" width="8" height="3.4" position="0 1.7 4" rotation="0 180 0"
@@ -214,10 +216,19 @@
         data-id="altar"
         material="shader: standard; color: #2a2e30; metalness: 0.25; roughness: 0.7; emissive: #1a2a1c; emissiveIntensity: 0.28"
         hover-glow></a-box>
-      <!-- altar labels removed -->
+      <a-entity id="stairs" visible="false" position="0 0.15 -3.2">
+        <a-box position="0 0.05 0.35" width="1.1" height="0.12" depth="0.38" material="color: #2a2e30"></a-box>
+        <a-box position="0 0.18 0.12" width="1.0" height="0.12" depth="0.38" material="color: #262a2c"></a-box>
+        <a-box position="0 0.31 -0.1" width="0.9" height="0.12" depth="0.38" material="color: #222628"></a-box>
+        <a-box position="0 0.44 -0.32" width="0.8" height="0.12" depth="0.38" material="color: #1c2022"></a-box>
+        <a-box id="hot-stairs" class="clickable" position="0 0.4 0" width="1.2" height="0.9" depth="1.1"
+          data-id="stairs"
+          material="shader: standard; color: #2a2e30; transparent: true; opacity: 0.12; emissive: #1a2a1c; emissiveIntensity: 0.2"
+          hover-glow></a-box>
+      </a-entity>
 
       <!-- Paintings on the four walls. Same rite ids. -->
-      <a-entity position="-1.85 1.55 -3.88">
+      <a-entity position="-1.85 1.55 -3.68">
         <a-box width="1.05" height="1.48" depth="0.06" position="0 0 -0.04" material="color: #1a1c1e; roughness: 0.7"></a-box>
         <a-plane id="idol-well" class="clickable" width="0.92" height="1.34"
           data-id="idol-well"
@@ -226,7 +237,7 @@
       
       </a-entity>
 
-      <a-entity position="1.85 1.55 -3.88">
+      <a-entity position="1.85 1.55 -3.68">
         <a-box width="1.05" height="1.48" depth="0.06" position="0 0 -0.04" material="color: #1a1c1e; roughness: 0.7"></a-box>
         <a-plane id="idol-angle" class="clickable" width="0.92" height="1.34"
           data-id="idol-angle"
@@ -235,7 +246,7 @@
       
       </a-entity>
 
-      <a-entity position="-3.88 1.55 1.6" rotation="0 90 0">
+      <a-entity position="-3.68 1.55 1.6" rotation="0 90 0">
         <a-box width="1.05" height="1.48" depth="0.06" position="0 0 -0.04" material="color: #1a1c1e; roughness: 0.7"></a-box>
         <a-plane id="idol-cleric" class="clickable" width="0.92" height="1.34"
           data-id="idol-cleric"
@@ -244,7 +255,7 @@
       
       </a-entity>
 
-      <a-entity position="3.88 1.55 1.6" rotation="0 -90 0">
+      <a-entity position="3.68 1.55 1.6" rotation="0 -90 0">
         <a-box width="1.05" height="1.48" depth="0.06" position="0 0 -0.04" material="color: #1a1c1e; roughness: 0.7"></a-box>
         <a-plane id="idol-choir" class="clickable" width="0.92" height="1.34"
           data-id="idol-choir"
@@ -252,6 +263,41 @@
           hover-glow></a-plane>
       
       </a-entity>
+    </a-entity>
+
+    <a-entity id="level-3" visible="false" position="0 -80 0">
+      <a-plane class="solid" width="6" height="2.6" position="0 1.3 -3"
+        material="shader: standard; src: #tex-wall; roughness: 0.99; color: #3a3e42; repeat: 1.6 1"></a-plane>
+      <a-plane class="solid" width="6" height="2.6" position="0 1.3 3" rotation="0 180 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.99; color: #34383c; repeat: 1.6 1"></a-plane>
+      <a-plane class="solid" width="6" height="2.6" position="-3 1.3 0" rotation="0 90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.99; color: #383c40; repeat: 1.6 1"></a-plane>
+      <a-plane class="solid" width="6" height="2.6" position="3 1.3 0" rotation="0 -90 0"
+        material="shader: standard; src: #tex-wall; roughness: 0.99; color: #32363a; repeat: 1.6 1"></a-plane>
+      <a-plane class="solid" width="6" height="6" position="0 0 0" rotation="-90 0 0"
+        material="shader: standard; src: #tex-floor; roughness: 0.99; color: #2a2e32; repeat: 2.5 2.5"></a-plane>
+      <a-plane class="solid" width="6" height="6" position="0 2.6 0" rotation="90 0 0"
+        material="shader: standard; src: #tex-ceil; roughness: 1; color: #1c2024; repeat: 2.5 2.5"></a-plane>
+
+      <a-cylinder id="hot-well3" class="clickable" position="0 0.08 0" radius="0.62" height="0.12"
+        data-id="well3"
+        material="shader: standard; color: #1a1e20; metalness: 0.35; roughness: 0.5; emissive: #0a1810; emissiveIntensity: 0.2"
+        hover-glow></a-cylinder>
+      <a-circle position="0 0.15 0" rotation="-90 0 0" radius="0.42" material="shader: flat; color: #030405"></a-circle>
+
+      <a-plane id="hot-lie-left" class="clickable" position="-2.85 1.4 0" rotation="0 90 0"
+        width="0.9" height="1.1" data-id="lie-left"
+        material="shader: standard; src: #tex-wall; color: #2a3030; emissive: #1a1010; emissiveIntensity: 0.12"
+        hover-glow></a-plane>
+      <a-plane id="hot-lie-right" class="clickable" position="2.85 1.4 0" rotation="0 -90 0"
+        width="0.9" height="1.1" data-id="lie-right"
+        material="shader: standard; src: #tex-wall; color: #2a3030; emissive: #1a1010; emissiveIntensity: 0.12"
+        hover-glow></a-plane>
+
+      <a-box id="hot-tablet" class="clickable" position="0 1.05 -2.85" width="0.8" height="0.35" depth="0.08"
+        data-id="tablet"
+        material="shader: standard; color: #3a3e40; emissive: #1a2a1c; emissiveIntensity: 0.15"
+        hover-glow></a-box>
     </a-entity>
 
     <a-entity id="rig" position="0 0 0">
@@ -266,6 +312,24 @@
         <a-entity id="head-light" desktop-lamp>
           <a-light type="spot" color="#dce4d8" intensity="1.45" angle="20" penumbra="0.5"
             distance="14" decay="1.3"></a-light>
+        </a-entity>
+        <a-entity id="vr-boot" position="0 0 -1.7">
+          <a-plane width="1.6" height="1.05" material="shader: flat; color: #07080a; opacity: 0.94; transparent: true"></a-plane>
+          <a-text value="THE FIRST ANGLE" align="center" position="0 0.38 0.01" width="1.5" color="#8a9a86"></a-text>
+          <a-text value="HOLLOW STONE" align="center" position="0 0.2 0.01" width="2.2" color="#d6d8d4"></a-text>
+          <a-text value="Stay where you stand. Let the lamps confess the walls." align="center" position="0 0.02 0.01" width="1.45" wrap-count="32" color="#9aa0a4"></a-text>
+          <a-plane id="hot-descend" class="clickable" position="0 -0.32 0.02" width="0.7" height="0.16"
+            data-id="descend-vr"
+            material="shader: flat; color: #121416; opacity: 0.95; transparent: true"
+            hover-glow></a-plane>
+          <a-text value="DESCEND" align="center" position="0 -0.32 0.03" width="1.2" color="#c4cdc0"></a-text>
+        </a-entity>
+        <a-entity id="vr-intro" visible="false" position="0 0 -1.85">
+          <a-video id="vr-intro-plane" src="#intro-asset" width="2.2" height="1.24"></a-video>
+          <a-plane id="hot-skip-intro" class="clickable" position="0.85 -0.75 0.02" width="0.4" height="0.12"
+            data-id="skip-intro-vr"
+            material="shader: flat; color: #121416"></a-plane>
+          <a-text value="SKIP" align="center" position="0.85 -0.75 0.03" width="0.7" color="#8a928c"></a-text>
         </a-entity>
       </a-camera>
 
@@ -300,7 +364,10 @@
       level: 1, hasKey: false, doorOpen: false, entering: false, slateOpen: false,
       rite: [],
       riteDone: false,
-      riteOrder: ['well', 'angle', 'cleric', 'choir']
+      riteOrder: ['well', 'angle', 'cleric', 'choir'],
+      started: false,
+      basementDone: false,
+      wellCharge: 0
     };
 
     function mulberry32(a) {
@@ -572,7 +639,42 @@
         this.el.addEventListener('enter-vr', () => {
           const h = document.getElementById('hint');
           if (h) h.textContent = 'Aim the lamp. When a thing brightens, pull trigger.';
+          document.getElementById('boot').style.display = 'none';
+          document.getElementById('intro-wrap').classList.remove('on');
+          const vrBoot = document.querySelector('#vr-boot');
+          const vrIntro = document.querySelector('#vr-intro');
+          if (!Game.started && vrBoot) vrBoot.setAttribute('visible', true);
+          if (Game.started && vrIntro) vrIntro.setAttribute('visible', false);
         });
+      }
+    });
+
+    AFRAME.registerComponent('double-beam', {
+      tick: function (t, dt) {
+        if (Game.level !== 3 || Game.basementDone || Game.entering) return;
+        const well = document.querySelector('#hot-well3');
+        if (!well) return;
+        const hitWell = (handId) => {
+          const rc = document.querySelector(handId) && document.querySelector(handId).components.raycaster;
+          if (!rc || !rc.intersections) return false;
+          return rc.intersections.some((h) => {
+            let e = h.object.el;
+            while (e) {
+              if (e.id === 'hot-well3') return true;
+              e = e.parentEl;
+            }
+            return false;
+          });
+        };
+        const both = hitWell('#leftHand') && hitWell('#rightHand');
+        if (both) {
+          Game.wellCharge += dt || 16;
+          well.setAttribute('material', 'emissiveIntensity', 0.25 + Math.min(1, Game.wellCharge / 1800) * 0.9);
+          if (Game.wellCharge > 1800) finishBasement();
+        } else {
+          Game.wellCharge = Math.max(0, Game.wellCharge - (dt || 16) * 0.6);
+          well.setAttribute('material', 'emissiveIntensity', 0.2 + Game.wellCharge / 1800 * 0.4);
+        }
       }
     });
 
@@ -679,6 +781,35 @@
       }
       if (id && id.indexOf('idol-') === 0) {
         kindleIdol(id.replace('idol-', ''), el);
+        return;
+      }
+      if (id === 'descend-vr') {
+        playIntroThenVault();
+        return;
+      }
+      if (id === 'skip-intro-vr') {
+        beginVault();
+        return;
+      }
+      if (id === 'stairs') {
+        openStairsToBasement();
+        return;
+      }
+      if (id === 'tablet') {
+        showSlate('CUT IN SALT', 'Two lamps. One lies. The mouth in the floor only opens when both beams agree. The walls will offer you other throats. They are hungry.', el);
+        return;
+      }
+      if (id === 'well3') {
+        if (Game.basementDone) {
+          showSlate('THE FIFTH NAME', 'The well has taken both lights. It will not say the name. It only keeps it.', el);
+        } else {
+          showSlate('THE WELL BENEATH', 'One lamp is not enough. Cross both beams on this mouth and hold them until the stone drinks.', el);
+        }
+        return;
+      }
+      if (id === 'lie-left' || id === 'lie-right') {
+        groan();
+        showSlate('A LYING MOUTH', 'This throat was painted on the stone. It drinks one lamp and gives nothing back. The true mouth is in the floor.', el);
       }
     }
 
@@ -745,13 +876,55 @@
     function completeRite() {
       Game.riteDone = true;
       const altar = document.querySelector('#hot-altar');
-      altar.setAttribute('material', 'emissive: #8aaa80; emissiveIntensity: 1.1');
+      altar.setAttribute('visible', false);
+      altar.classList.remove('clickable');
+      const stairs = document.querySelector('#stairs');
+      stairs.setAttribute('visible', true);
+      creak();
       riteCompleteSound();
       chapelDrone(true);
       setTimeout(() => {
-        showSlate('THE VESTRY CLOSES', 'Four figures, one circuit. The nave remembers a fifth name and will not say it. The floor is no longer a floor.', altar);
-        document.getElementById('hint').textContent = 'The rite is complete. The altar knows you.';
+        showSlate('THE ALTAR OPENS', 'The slab steps down into itself. A stair that was always the altar. The fifth name is below.', stairs);
+        document.getElementById('hint').textContent = 'The altar is a stair. Point at it and descend.';
       }, 700);
+    }
+
+    function openStairsToBasement() {
+      if (!Game.riteDone || Game.entering) return;
+      Game.entering = true;
+      hideSlate();
+      showSlate('THE DESCENT', 'You do not walk down. The vestry lifts away.', document.querySelector('#hot-stairs'));
+      creak();
+      document.querySelector('#crossing .kicker').textContent = 'The floor gives way';
+      document.querySelector('#crossing h2').textContent = 'THE WELL BENEATH';
+      document.querySelector('#crossing p').textContent = 'Two lamps. One lies. Both must agree.';
+      setTimeout(() => document.getElementById('fade').classList.add('on'), 700);
+      setTimeout(() => {
+        hideSlate();
+        document.getElementById('crossing').classList.add('on');
+        setLevelLive(3);
+        document.querySelector('#ember').setAttribute('light', 'color: #1a2a22; intensity: 0.12; distance: 4');
+        document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #050607; near: 0.25; far: 5.5');
+        document.querySelector('#scene').setAttribute('background', 'color: #040506');
+        Game.level = 3;
+      }, 1500);
+      setTimeout(() => document.getElementById('fade').classList.remove('on'), 2600);
+      setTimeout(() => {
+        document.getElementById('crossing').classList.remove('on');
+        showSlate('THE BASEMENT', 'A mouth in the floor. Two false throats in the walls. Cross both beams on the well.', document.querySelector('#hot-well3'));
+        document.getElementById('hint').textContent = 'Both lamps on the well · hold';
+        Game.entering = false;
+      }, 3800);
+    }
+
+    function finishBasement() {
+      if (Game.basementDone) return;
+      Game.basementDone = true;
+      const well = document.querySelector('#hot-well3');
+      well.setAttribute('material', 'emissive: #8aaa80; emissiveIntensity: 1.2');
+      riteCompleteSound();
+      showSlate('THE FIFTH NAME', 'Both lamps told the same lie to the same mouth, and the mouth opened. The name stays in the water. This is as far as the stone goes — for now.', well);
+      document.getElementById('hint').textContent = 'The basement is listening.';
     }
 
     function openDoorToLevel2() {
@@ -956,53 +1129,76 @@
     }
 
     function setLevelLive(n) {
-      const l1 = document.getElementById('level-1');
-      const l2 = document.getElementById('level-2');
-      const on1 = n === 1;
-      l1.setAttribute('visible', on1);
-      l2.setAttribute('visible', !on1);
-      l1.querySelectorAll('[data-id]').forEach((el) => {
-        if (on1) el.classList.add('clickable');
-        else el.classList.remove('clickable');
-      });
-      l2.querySelectorAll('[data-id]').forEach((el) => {
-        if (!on1) el.classList.add('clickable');
-        else el.classList.remove('clickable');
+      [1, 2, 3].forEach((i) => {
+        const root = document.getElementById('level-' + i);
+        if (!root) return;
+        const live = i === n;
+        root.setAttribute('visible', live);
+        root.setAttribute('position', live ? '0 0 0' : '0 -80 0');
+        root.querySelectorAll('[data-id]').forEach((el) => {
+          if (live) el.classList.add('clickable');
+          else el.classList.remove('clickable');
+        });
       });
     }
 
     buildTextures();
-    function beginVault() {
+    function hideMenuCards() {
+      const vrBoot = document.querySelector('#vr-boot');
+      if (vrBoot) vrBoot.setAttribute('visible', false);
+      const d = document.querySelector('#hot-descend');
+      if (d) d.classList.remove('clickable');
+      const s = document.querySelector('#hot-skip-intro');
+      if (s) s.classList.remove('clickable');
       document.getElementById('boot').style.display = 'none';
+    }
+    function beginVault() {
+      Game.started = true;
+      hideMenuCards();
       document.getElementById('intro-wrap').classList.remove('on');
-      const v = document.getElementById('intro');
-      try { v.pause(); } catch (e) {}
-      document.getElementById('scene').setAttribute('visible', true);
+      const vrIntro = document.querySelector('#vr-intro');
+      if (vrIntro) vrIntro.setAttribute('visible', false);
+      ['intro', 'intro-asset'].forEach((id) => {
+        const v = document.getElementById(id);
+        try { if (v) v.pause(); } catch (e) {}
+      });
       setLevelLive(1);
       startAmbience();
     }
     function playIntroThenVault() {
-      document.getElementById('boot').style.display = 'none';
+      hideMenuCards();
+      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      const asset = document.getElementById('intro-asset');
+      const flat = document.getElementById('intro');
       const wrap = document.getElementById('intro-wrap');
-      const v = document.getElementById('intro');
       const status = document.getElementById('intro-status');
+      const vrIntro = document.querySelector('#vr-intro');
+      if (asset) {
+        asset.onended = () => beginVault();
+        asset.currentTime = 0;
+      }
+      if (inVR && vrIntro) {
+        vrIntro.setAttribute('visible', true);
+        if (asset && asset.play) asset.play().catch(() => beginVault());
+        return;
+      }
       wrap.classList.add('on');
-      v.onended = () => beginVault();
-      v.onerror = () => {
-        status.textContent = 'Intro1.mp4 did not load. The file on GitHub is empty or not a real video — re-upload it, then Skip.';
-      };
+      if (flat) {
+        flat.onended = () => beginVault();
+        flat.onerror = () => {
+          status.textContent = 'Intro1.mp4 did not load. Re-upload a real video, then Skip.';
+        };
+      }
       fetch('Intro1.mp4', { method: 'HEAD' }).then((res) => {
         const len = parseInt(res.headers.get('content-length') || '0', 10);
         if (!res.ok || len < 1000) {
-          status.textContent = 'Intro1.mp4 on the site is ' + len + ' bytes. Re-upload the real video next to index.html.';
+          status.textContent = 'Intro1.mp4 on the site is ' + len + ' bytes. Re-upload the real video.';
           return;
         }
-        v.src = 'Intro1.mp4';
-        v.play().catch(() => {
-          status.textContent = 'Tap the video to play, or Skip.';
-        });
+        const play = (asset && asset.play()) || (flat && flat.play());
+        if (play && play.catch) play.catch(() => { status.textContent = 'Tap the video to play, or Skip.'; });
       }).catch(() => {
-        status.textContent = 'Could not reach Intro1.mp4. Upload it to the repo root.';
+        status.textContent = 'Could not reach Intro1.mp4.';
       });
     }
     document.getElementById('enter').addEventListener('click', playIntroThenVault);
