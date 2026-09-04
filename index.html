@@ -181,6 +181,7 @@
       </a-plane>
 
       <a-cylinder id="hot-drain" class="clickable" position="0 0.04 1.6"
+        well-watch
         radius="0.48" height="0.06"
         data-id="drain"
         material="shader: standard; color: #2a2e30; metalness: 0.55; roughness: 0.4"
@@ -405,6 +406,8 @@
       basementDone: false,
       wellCharge: 0,
       canvasLock: false,
+      canvasCounting: false,
+      sawWell: false,
       climbY: 0,
       climbVel: 0,
       lastClimb: 0,
@@ -753,6 +756,28 @@
       }
     });
 
+    AFRAME.registerComponent('well-watch', {
+      init: function () {
+        this._pos = new THREE.Vector3();
+        this._cam = new THREE.Vector3();
+        this._fwd = new THREE.Vector3();
+      },
+      tick: function () {
+        if (Game.sawWell || Game.level !== 1) return;
+        const aimed = rayHitsId('#leftHand', 'hot-drain') || rayHitsId('#rightHand', 'hot-drain');
+        const cam = document.querySelector('#cam');
+        if (cam) {
+          this.el.object3D.getWorldPosition(this._pos);
+          cam.object3D.getWorldPosition(this._cam);
+          cam.object3D.getWorldDirection(this._fwd);
+          this._fwd.multiplyScalar(-1);
+          const to = this._pos.clone().sub(this._cam).normalize();
+          if (this._fwd.dot(to) > 0.72) Game.sawWell = true;
+        }
+        if (aimed) Game.sawWell = true;
+      }
+    });
+
     AFRAME.registerComponent('double-beam', {
       tick: function () {
         if (Game.level !== 3 || Game.basementDone || Game.entering || Game.canvasLock) return;
@@ -761,7 +786,11 @@
         const leftOnRight = rayHitsId('#leftHand', 'hot-lie-right');
         const rightOnLeft = rayHitsId('#rightHand', 'hot-lie-left');
         const split = (leftOnLeft && rightOnRight) || (leftOnRight && rightOnLeft);
-        if (split) startCanvasRite();
+        if (split) {
+          if (!Game.canvasCounting) startCanvasRite();
+        } else if (Game.canvasCounting) {
+          resetCanvasRite();
+        }
       }
     });
 
@@ -842,6 +871,10 @@
       if (!id || id === 'slate') return;
       tickSound();
       if (id === 'stone') {
+        if (!Game.sawWell) {
+          showSlate('THE THROAT FIRST', 'The block will not shift for you. Look into the well in the floor. The room keeps its order.', el);
+          return;
+        }
         Game.hasKey = true;
         const key = document.querySelector('#hot-key');
         key.setAttribute('visible', true);
@@ -853,6 +886,10 @@
         return;
       }
       if (id === 'key') {
+        if (!Game.sawWell) {
+          showSlate('THE THROAT FIRST', 'The pale key stays put. Look into the well in the floor before you take it.', el);
+          return;
+        }
         Game.hasKey = true;
         showSlate('PALE KEY', 'It is cold in a way iron is not. The wards are cut for a lock that opens inward, into the mason.', el);
         el.setAttribute('visible', false);
@@ -864,7 +901,9 @@
         return;
       }
       if (id === 'drain') {
+        Game.sawWell = true;
         showSlate('THE WELL-MOUTH', 'Not plumbing. A throat. Salt air rises from a city that has not seen a sun since the stones were laid.', el);
+        document.getElementById('hint').textContent = 'The stone will move now. Look to the wall.';
         return;
       }
       if (id === 'door') {
@@ -1025,37 +1064,67 @@
       }, 3800);
     }
 
-    function startCanvasRite() {
-      if (Game.canvasLock || Game.basementDone) return;
-      Game.canvasLock = true;
-      hideSlate();
+    function setCanvasHorror(on) {
       const left = document.querySelector('#hot-lie-left');
       const right = document.querySelector('#hot-lie-right');
       [left, right].forEach((el) => {
-        el.setAttribute('material', {
-          src: '#tex-horror',
-          emissive: '#ffffff',
-          emissiveIntensity: 0.35,
-          color: '#ffffff'
-        });
+        if (!el) return;
+        if (on) {
+          el.setAttribute('material', {
+            src: '#tex-horror',
+            emissive: '#ffffff',
+            emissiveIntensity: 0.35,
+            color: '#ffffff'
+          });
+        } else {
+          el.setAttribute('material', {
+            src: '#tex-wall',
+            color: '#2a3030',
+            emissive: '#1a1010',
+            emissiveIntensity: 0.12
+          });
+        }
       });
+    }
+
+    function paintCanvasCount(n) {
+      const v = n == null ? '' : String(n);
+      const a = document.querySelector('#count-left');
+      const b = document.querySelector('#count-right');
+      if (a) a.setAttribute('value', v);
+      if (b) b.setAttribute('value', v);
+    }
+
+    function resetCanvasRite() {
+      if (Game._countIv) {
+        clearInterval(Game._countIv);
+        Game._countIv = null;
+      }
+      Game.canvasCounting = false;
+      Game.canvasN = 6;
+      setCanvasHorror(false);
+      paintCanvasCount('');
+    }
+
+    function startCanvasRite() {
+      if (Game.basementDone || Game.canvasLock) return;
+      if (Game.canvasCounting) return;
+      Game.canvasCounting = true;
+      Game.canvasN = 6;
+      hideSlate();
+      setCanvasHorror(true);
       idolSound('choir');
-      let n = 6;
-      const paint = () => {
-        const v = String(n);
-        const a = document.querySelector('#count-left');
-        const b = document.querySelector('#count-right');
-        if (a) a.setAttribute('value', v);
-        if (b) b.setAttribute('value', v);
-      };
-      paint();
+      paintCanvasCount(Game.canvasN);
       Game._countIv = setInterval(() => {
-        n -= 1;
-        if (n <= 0) {
+        if (!Game.canvasCounting) return;
+        Game.canvasN -= 1;
+        if (Game.canvasN <= 0) {
           clearInterval(Game._countIv);
-          paint();
+          Game._countIv = null;
+          Game.canvasLock = true;
+          paintCanvasCount(0);
           horrorFlashThenFall();
-        } else paint();
+        } else paintCanvasCount(Game.canvasN);
       }, 1000);
     }
 
