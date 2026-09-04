@@ -365,8 +365,8 @@
           <a-text id="end-title" value="YOU STOOD STILL" align="center" position="0 0.18 0.01" width="1.4" color="#1a1c1e"></a-text>
           <a-text id="end-body" value="" align="center" position="0 -0.08 0.01" width="1.35" wrap-count="34" color="#2a2e32"></a-text>
         </a-entity>
-        <a-plane id="flash-horror" visible="false" position="0 0 -0.55" width="2.8" height="2.1"
-          material="shader: flat; src: #tex-horror; side: double; depthTest: false; transparent: false"></a-plane>
+        <a-image id="jump-choir" src="#tex-choir" width="1.35" height="2.0" position="0 0 -0.62" visible="false"></a-image>
+        <a-image id="jump-horror" src="#tex-horror" width="2.15" height="1.35" position="0 0 -0.62" visible="false"></a-image>
       </a-camera>
 
       <a-entity id="leftHand"
@@ -1060,31 +1060,16 @@
     }
 
     function horrorFlashThenFall() {
-      const flash = document.querySelector('#flash-horror');
-      if (flash) {
-        flash.setAttribute('material', {
-          shader: 'flat',
-          src: '#tex-horror',
-          side: 'double',
-          depthTest: false,
-          transparent: false
-        });
-        flash.setAttribute('visible', true);
-      }
+      const fade = document.getElementById('fade');
+      if (fade) fade.classList.remove('on');
+      const img = document.querySelector('#jump-horror');
+      if (img) img.setAttribute('visible', true);
       screech();
-      setTimeout(() => screech(), 220);
-      let i = 0;
-      const pulse = () => {
-        if (!flash) return;
-        flash.setAttribute('visible', i % 2 === 0);
-        i += 1;
-        if (i < 12) setTimeout(pulse, 200);
-        else {
-          flash.setAttribute('visible', false);
-          fallIntoWell();
-        }
-      };
-      setTimeout(pulse, 120);
+      setTimeout(() => screech(), 400);
+      setTimeout(() => {
+        if (img) img.setAttribute('visible', false);
+        fallIntoWell();
+      }, 2400);
     }
 
     function fallIntoWell() {
@@ -1101,8 +1086,10 @@
       }, 700);
       setTimeout(() => {
         document.getElementById('fade').classList.remove('on');
-        const flash = document.querySelector('#flash-horror');
-        if (flash) flash.setAttribute('visible', false);
+        const jh = document.querySelector('#jump-horror');
+        const jc = document.querySelector('#jump-choir');
+        if (jh) jh.setAttribute('visible', false);
+        if (jc) jc.setAttribute('visible', false);
         document.getElementById('hint').textContent = 'Look up. Click the white mouth. Keep clicking.';
         Game.entering = false;
         Game.climbY = 0;
@@ -1239,34 +1226,15 @@
     }
     function tickSound() { drip(380, 0.035); }
     function jumpscareChoir() {
-      const flash = document.querySelector('#flash-horror');
-      if (flash) {
-        flash.setAttribute('material', {
-          shader: 'flat',
-          src: '#tex-choir',
-          side: 'double',
-          depthTest: false,
-          transparent: false
-        });
-        flash.setAttribute('visible', true);
-        setTimeout(() => flash.setAttribute('visible', false), 90);
-        setTimeout(() => flash.setAttribute('visible', true), 140);
-        setTimeout(() => {
-          flash.setAttribute('visible', false);
-          flash.setAttribute('material', {
-            shader: 'flat',
-            src: '#tex-horror',
-            side: 'double',
-            depthTest: false,
-            transparent: false
-          });
-        }, 280);
-      }
+      const fade = document.getElementById('fade');
+      if (fade) fade.classList.remove('on');
+      hideSlate();
+      const img = document.querySelector('#jump-choir');
+      if (img) img.setAttribute('visible', true);
       screech();
-      return;
-      document.getElementById('fade').classList.add('on');
-      setTimeout(() => document.getElementById('fade').classList.remove('on'), 70);
-      screech();
+      setTimeout(() => {
+        if (img) img.setAttribute('visible', false);
+      }, 550);
     }
 
     function screech() {
@@ -1509,7 +1477,7 @@
       if (skip) skip.classList.remove('clickable');
       const card = document.querySelector('#end-card');
       const body = document.querySelector('#end-body');
-      if (body) body.setAttribute('value', 'The shaft lets go. Whatever wore these stones as a mouth has no claim on you now. You stood still, and the nightmare could not keep you.');
+      if (body) body.setAttribute('value', 'The shaft lets go. The nightmare could not keep you.');
       if (card) card.setAttribute('visible', true);
     }
     function playIntroThenVault() {
