@@ -112,6 +112,7 @@
       <img id="tex-choir" src="paintings/choir.jpg" crossorigin="anonymous">
       <img id="tex-horror" src="paintings/horror.jpg" crossorigin="anonymous">
       <video id="intro-asset" src="Intro1.mp4" playsinline webkit-playsinline preload="auto"></video>
+      <video id="outro-asset" src="Outro.mp4" playsinline webkit-playsinline preload="auto"></video>
     </a-assets>
 
     <a-entity light="type: ambient; color: #121416; intensity: 0.07"></a-entity>
@@ -396,7 +397,8 @@
       climbY: 0,
       climbVel: 0,
       lastClimb: 0,
-      climbDone: false
+      climbDone: false,
+      playingOutro: false
     };
 
     function mulberry32(a) {
@@ -758,9 +760,9 @@
         const ms = dt || 16;
         const recent = (performance.now() - Game.lastClimb) < 420;
         if (recent) {
-          Game.climbVel = Math.min(2.4, Game.climbVel + 0.012 * ms);
+          Game.climbVel = Math.min(0.95, Game.climbVel + 0.0045 * ms);
         } else {
-          Game.climbVel = Math.max(-1.6, Game.climbVel - 0.008 * ms);
+          Game.climbVel = Math.max(-0.7, Game.climbVel - 0.0035 * ms);
         }
         Game.climbY = Math.max(0, Game.climbY + Game.climbVel * (ms / 1000));
         if (Game.climbY <= 0 && Game.climbVel < 0) Game.climbVel = 0;
@@ -880,7 +882,8 @@
         return;
       }
       if (id === 'skip-intro-vr') {
-        beginVault();
+        if (Game.playingOutro) endOutro();
+        else beginVault();
         return;
       }
       if (id === 'stairs') {
@@ -902,7 +905,7 @@
       if (id === 'wellmouth') {
         if (Game.climbDone) return;
         Game.lastClimb = performance.now();
-        Game.climbVel = Math.min(2.6, Game.climbVel + 0.55);
+        Game.climbVel = Math.min(1.05, Game.climbVel + 0.22);
         tickSound();
       }
     }
@@ -1026,7 +1029,7 @@
         });
       });
       idolSound('choir');
-      let n = 5;
+      let n = 6;
       const paint = () => {
         const v = String(n);
         const a = document.querySelector('#count-left');
@@ -1048,20 +1051,23 @@
     function horrorFlashThenFall() {
       const flash = document.querySelector('#flash-horror');
       const fade = document.getElementById('fade');
+      if (flash) flash.setAttribute('material', 'src', '#tex-horror');
       fade.classList.add('on');
+      setTimeout(() => fade.classList.remove('on'), 80);
       screech();
+      setTimeout(() => screech(), 220);
       let i = 0;
       const pulse = () => {
         if (!flash) return;
         flash.setAttribute('visible', i % 2 === 0);
         i += 1;
-        if (i < 6) setTimeout(pulse, 180);
+        if (i < 12) setTimeout(pulse, 200);
         else {
           flash.setAttribute('visible', false);
           fallIntoWell();
         }
       };
-      setTimeout(pulse, 200);
+      setTimeout(pulse, 120);
     }
 
     function fallIntoWell() {
@@ -1302,9 +1308,9 @@
       if (Game.climbDone) return;
       Game.climbDone = true;
       Game.climbVel = 0;
-      riteCompleteSound();
+      hideSlate();
       document.getElementById('hint').textContent = 'The mouth of the well.';
-      showSlate('THE RIM', 'You crawled the shaft with the lamps. Daylight that is not daylight. The stone ends in a pale ring. What waits above is not this room.', document.querySelector('#hot-wellmouth'));
+      playOutro();
     }
     function playTone(type, startF, endF, dur, gain, filterType, filterF, q) {
       const ctx = ensureAudio();
@@ -1417,6 +1423,50 @@
       setLevelLive(1);
       startAmbience();
     }
+    function playOutro() {
+      Game.playingOutro = true;
+      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      const asset = document.getElementById('outro-asset');
+      const wrap = document.getElementById('intro-wrap');
+      const flat = document.getElementById('intro');
+      const status = document.getElementById('intro-status');
+      const vrIntro = document.querySelector('#vr-intro');
+      const plane = document.querySelector('#vr-intro-plane');
+      const skip = document.querySelector('#hot-skip-intro');
+      if (skip) skip.classList.add('clickable');
+      if (asset) {
+        asset.onended = () => endOutro();
+        asset.currentTime = 0;
+      }
+      if (inVR && vrIntro) {
+        if (plane) plane.setAttribute('src', '#outro-asset');
+        vrIntro.setAttribute('visible', true);
+        if (asset && asset.play) asset.play().catch(() => endOutro());
+        return;
+      }
+      wrap.classList.add('on');
+      if (flat) {
+        flat.src = 'Outro.mp4';
+        flat.onended = () => endOutro();
+        flat.play().catch(() => {
+          if (status) status.textContent = 'Tap the video, or Skip.';
+        });
+      }
+      if (asset && asset.play) asset.play().catch(() => {});
+    }
+    function endOutro() {
+      Game.playingOutro = false;
+      document.getElementById('intro-wrap').classList.remove('on');
+      const vrIntro = document.querySelector('#vr-intro');
+      if (vrIntro) vrIntro.setAttribute('visible', false);
+      ['outro-asset', 'intro'].forEach((id) => {
+        const v = document.getElementById(id);
+        try { if (v) v.pause(); } catch (e) {}
+      });
+      const skip = document.querySelector('#hot-skip-intro');
+      if (skip) skip.classList.remove('clickable');
+      showSlate('THE RIM', 'You crawled the shaft with the lamps. Daylight that is not daylight. The stone ends in a pale ring.', document.querySelector('#hot-wellmouth'));
+    }
     function playIntroThenVault() {
       hideMenuCards();
       const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
@@ -1430,6 +1480,8 @@
         asset.currentTime = 0;
       }
       if (inVR && vrIntro) {
+        const plane = document.querySelector('#vr-intro-plane');
+        if (plane) plane.setAttribute('src', '#intro-asset');
         vrIntro.setAttribute('visible', true);
         if (asset && asset.play) asset.play().catch(() => beginVault());
         return;
@@ -1454,7 +1506,10 @@
       });
     }
     document.getElementById('enter').addEventListener('click', playIntroThenVault);
-    document.getElementById('skip-intro').addEventListener('click', beginVault);
+    document.getElementById('skip-intro').addEventListener('click', () => {
+      if (Game.playingOutro) endOutro();
+      else beginVault();
+    });
   </script>
 </body>
 </html>
