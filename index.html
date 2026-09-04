@@ -98,6 +98,7 @@
     background="color: #08090b"
     crypt-world
     double-beam
+    well-climb
     visible="true">
 
     <a-assets timeout="15000">
@@ -311,8 +312,10 @@
         material="shader: standard; src: #tex-floor; color: #2a2c2e; roughness: 1"></a-circle>
       <a-ring position="0 8.5 0" rotation="-90 0 0" radius-inner="0.55" radius-outer="1.5"
         material="shader: standard; src: #tex-wall; color: #2c3034; side: double"></a-ring>
-      <a-circle position="0 8.55 0" rotation="-90 0 0" radius="0.55"
-        material="shader: flat; color: #e8e4d8; emissive: #e8e4d8; emissiveIntensity: 2"></a-circle>
+      <a-circle id="hot-wellmouth" class="clickable" position="0 8.4 0" rotation="-90 0 0" radius="0.85"
+        data-id="wellmouth"
+        material="shader: flat; color: #e8e4d8; emissive: #f2eee4; emissiveIntensity: 2.2"
+        hover-glow></a-circle>
       <a-entity position="0 8.4 0" light="type: point; color: #e8e2d4; intensity: 1.6; distance: 12; decay: 1.1"></a-entity>
       <a-entity position="0 6 0" light="type: spot; color: #f0ece0; intensity: 1.1; angle: 18; penumbra: 0.45; distance: 10" rotation="90 0 0"></a-entity>
     </a-entity>
@@ -387,7 +390,11 @@
       started: false,
       basementDone: false,
       wellCharge: 0,
-      canvasLock: false
+      canvasLock: false,
+      climbY: 0,
+      climbVel: 0,
+      lastClimb: 0,
+      climbDone: false
     };
 
     function mulberry32(a) {
@@ -717,6 +724,24 @@
       }
     });
 
+    AFRAME.registerComponent('well-climb', {
+      tick: function (t, dt) {
+        if (Game.level !== 4 || Game.climbDone || Game.entering) return;
+        const ms = dt || 16;
+        const recent = (performance.now() - Game.lastClimb) < 420;
+        if (recent) {
+          Game.climbVel = Math.min(2.4, Game.climbVel + 0.012 * ms);
+        } else {
+          Game.climbVel = Math.max(-1.6, Game.climbVel - 0.008 * ms);
+        }
+        Game.climbY = Math.max(0, Game.climbY + Game.climbVel * (ms / 1000));
+        if (Game.climbY <= 0 && Game.climbVel < 0) Game.climbVel = 0;
+        const rig = document.querySelector('#rig');
+        if (rig) rig.setAttribute('position', '0 ' + Game.climbY.toFixed(3) + ' 0');
+        if (Game.climbY >= 6.6) reachWellExit();
+      }
+    });
+
     AFRAME.registerComponent('face-player', {
       init: function () {
         this._camPos = new THREE.Vector3();
@@ -844,6 +869,13 @@
       }
       if (id === 'lie-left' || id === 'lie-right') {
         showSlate('A CANVAS', 'One lamp is a glance. Both lamps are an invitation.', el);
+        return;
+      }
+      if (id === 'wellmouth') {
+        if (Game.climbDone) return;
+        Game.lastClimb = performance.now();
+        Game.climbVel = Math.min(2.6, Game.climbVel + 0.55);
+        tickSound();
       }
     }
 
@@ -1020,8 +1052,11 @@
         document.getElementById('fade').classList.remove('on');
         const flash = document.querySelector('#flash-horror');
         if (flash) flash.setAttribute('visible', false);
-        document.getElementById('hint').textContent = 'The well. Look up.';
+        document.getElementById('hint').textContent = 'Look up. Click the white mouth. Keep clicking.';
         Game.entering = false;
+        Game.climbY = 0;
+        Game.climbVel = 0;
+        Game.lastClimb = 0;
       }, 1600);
     }
 
@@ -1154,30 +1189,76 @@
     function tickSound() { drip(380, 0.035); }
     function screech() {
       const ctx = ensureAudio();
-      const dur = 0.55;
+      const t0 = ctx.currentTime;
+      const dur = 1.8;
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, t0);
+      out.gain.exponentialRampToValueAtTime(0.28, t0 + 0.04);
+      out.gain.setValueAtTime(0.22, t0 + 0.25);
+      out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      out.connect(ctx.destination);
+
+      const makeOsc = (type, f0, f1, gain, delay) => {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.setValueAtTime(f0, t0 + delay);
+        o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t0 + delay + dur - 0.05);
+        const g = ctx.createGain();
+        g.gain.value = gain;
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(900, t0);
+        f.frequency.exponentialRampToValueAtTime(280, t0 + dur);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(t0 + delay);
+        o.stop(t0 + dur);
+      };
+      makeOsc('sawtooth', 55, 28, 0.55, 0);
+      makeOsc('sawtooth', 55 * 1.498, 41, 0.28, 0.02);
+      makeOsc('square', 110, 36, 0.12, 0.05);
+      makeOsc('sawtooth', 740, 90, 0.07, 0.08);
+      makeOsc('triangle', 220 * 1.498, 48, 0.16, 0);
+
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 6.5;
+      const lfoG = ctx.createGain();
+      lfoG.gain.value = 18;
+      const growl = ctx.createOscillator();
+      growl.type = 'sawtooth';
+      growl.frequency.value = 48;
+      lfo.connect(lfoG);
+      lfoG.connect(growl.frequency);
+      const gg = ctx.createGain();
+      gg.gain.value = 0.1;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 80;
+      growl.connect(hp); hp.connect(gg); gg.connect(out);
+      lfo.start(t0); growl.start(t0);
+      lfo.stop(t0 + dur); growl.stop(t0 + dur);
+
+      const noise = ctx.createBufferSource();
       const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
       const d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) {
-        const t = i / buf.length;
-        d[i] = (Math.random() * 2 - 1) * (1 - t) * (0.5 + Math.sin(t * 80) * 0.5);
+        const t = i / d.length;
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.4);
       }
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const f = ctx.createBiquadFilter();
-      f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = 4;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(1800, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + dur);
-      const og = ctx.createGain(); og.gain.value = 0.06;
-      src.connect(f); f.connect(g); g.connect(ctx.destination);
-      o.connect(og); og.connect(ctx.destination);
-      src.start(); o.start();
-      o.stop(ctx.currentTime + dur);
+      noise.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 2.2;
+      const ng = ctx.createGain(); ng.gain.value = 0.16;
+      noise.connect(bp); bp.connect(ng); ng.connect(out);
+      noise.start(t0);
+    }
+
+    function reachWellExit() {
+      if (Game.climbDone) return;
+      Game.climbDone = true;
+      Game.climbVel = 0;
+      riteCompleteSound();
+      document.getElementById('hint').textContent = 'The mouth of the well.';
+      showSlate('THE RIM', 'You crawled the shaft with the lamps. Daylight that is not daylight. The stone ends in a pale ring. What waits above is not this room.', document.querySelector('#hot-wellmouth'));
     }
     function playTone(type, startF, endF, dur, gain, filterType, filterF, q) {
       const ctx = ensureAudio();
