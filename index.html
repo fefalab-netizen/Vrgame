@@ -348,15 +348,25 @@
           <a-text value="DESCEND" align="center" position="0 -0.32 0.03" width="1.2" color="#c4cdc0"></a-text>
         </a-entity>
         <a-entity id="vr-intro" visible="false" position="0 0 -1.15">
+          <a-plane width="4.2" height="3.2" position="0 0 -0.04"
+            material="shader: flat; color: #000000; depthTest: false"></a-plane>
           <a-video id="vr-intro-plane" src="#intro-asset" width="1.7" height="0.96"
             material="shader: flat; depthTest: false"></a-video>
           <a-plane id="hot-skip-intro" class="clickable" position="0.85 -0.75 0.02" width="0.4" height="0.12"
             data-id="skip-intro-vr"
-            material="shader: flat; color: #121416"></a-plane>
+            material="shader: flat; color: #121416; depthTest: false"></a-plane>
           <a-text value="SKIP" align="center" position="0.85 -0.75 0.03" width="0.7" color="#8a928c"></a-text>
         </a-entity>
+        <a-entity id="end-card" visible="false" position="0 0 -1.2">
+          <a-plane width="4.2" height="3.2" position="0 0 -0.03"
+            material="shader: flat; color: #f4f1ea; depthTest: false"></a-plane>
+          <a-plane width="1.45" height="0.72"
+            material="shader: flat; color: #ffffff; depthTest: false"></a-plane>
+          <a-text id="end-title" value="YOU STOOD STILL" align="center" position="0 0.18 0.01" width="1.4" color="#1a1c1e"></a-text>
+          <a-text id="end-body" value="" align="center" position="0 -0.08 0.01" width="1.35" wrap-count="34" color="#2a2e32"></a-text>
+        </a-entity>
         <a-plane id="flash-horror" visible="false" position="0 0 -0.7" width="2.4" height="1.5"
-          material="shader: flat; src: #tex-horror"></a-plane>
+          material="shader: flat; src: #tex-horror; depthTest: false"></a-plane>
       </a-camera>
 
       <a-entity id="leftHand"
@@ -1426,6 +1436,9 @@
     }
     function playOutro() {
       Game.playingOutro = true;
+      hideSlate();
+      const endCard = document.querySelector('#end-card');
+      if (endCard) endCard.setAttribute('visible', false);
       Game.climbY = Math.min(Game.climbY, 3.4);
       Game.climbVel = 0;
       const rig = document.querySelector('#rig');
@@ -1464,6 +1477,7 @@
     }
     function endOutro() {
       Game.playingOutro = false;
+      hideSlate();
       document.getElementById('intro-wrap').classList.remove('on');
       const vrIntro = document.querySelector('#vr-intro');
       if (vrIntro) vrIntro.setAttribute('visible', false);
@@ -1473,7 +1487,10 @@
       });
       const skip = document.querySelector('#hot-skip-intro');
       if (skip) skip.classList.remove('clickable');
-      showSlate('THE RIM', 'You crawled the shaft with the lamps. Daylight that is not daylight. The stone ends in a pale ring.', document.querySelector('#hot-wellmouth'));
+      const card = document.querySelector('#end-card');
+      const body = document.querySelector('#end-body');
+      if (body) body.setAttribute('value', 'The shaft lets go. Whatever wore these stones as a mouth has no claim on you now. You stood still, and the nightmare could not keep you.');
+      if (card) card.setAttribute('visible', true);
     }
     function playIntroThenVault() {
       hideMenuCards();
