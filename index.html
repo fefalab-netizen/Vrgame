@@ -355,12 +355,12 @@
           <a-light type="spot" color="#dce4d8" intensity="1.45" angle="20" penumbra="0.5"
             distance="14" decay="1.3"></a-light>
         </a-entity>
-        <a-entity id="vr-boot" position="0 0 -1.7">
+        <a-entity id="vr-boot" visible="false" position="0 0 -1.7">
           <a-plane width="1.6" height="1.05" material="shader: flat; color: #07080a; opacity: 0.94; transparent: true"></a-plane>
           <a-text value="THE FIRST ANGLE" align="center" position="0 0.38 0.01" width="1.5" color="#8a9a86"></a-text>
           <a-text value="HOLLOW STONE" align="center" position="0 0.2 0.01" width="2.2" color="#d6d8d4"></a-text>
           <a-text value="Stay where you stand. Let the lamps confess the walls." align="center" position="0 0.02 0.01" width="1.45" wrap-count="32" color="#9aa0a4"></a-text>
-          <a-plane id="hot-descend" class="clickable" position="0 -0.32 0.02" width="0.7" height="0.16"
+          <a-plane id="hot-descend" position="0 -0.32 0.02" width="0.7" height="0.16"
             data-id="descend-vr"
             material="shader: flat; color: #121416; opacity: 0.95; transparent: true"
             hover-glow></a-plane>
@@ -371,7 +371,7 @@
             material="shader: flat; color: #000000; depthTest: false"></a-plane>
           <a-video id="vr-intro-plane" src="#intro-asset" width="1.53" height="0.86"
             material="shader: flat; depthTest: false"></a-video>
-          <a-plane id="hot-skip-intro" class="clickable" position="0 -0.56 0.02" width="0.42" height="0.13"
+          <a-plane id="hot-skip-intro" position="0 -0.56 0.02" width="0.42" height="0.13"
             data-id="skip-intro-vr"
             material="shader: flat; color: #121416; depthTest: false"></a-plane>
           <a-text value="SKIP" align="center" position="0 -0.56 0.03" width="0.7" color="#8a928c"></a-text>
@@ -383,7 +383,7 @@
             material="shader: flat; color: #ffffff; depthTest: false"></a-plane>
           <a-text id="end-title" value="YOU STOOD STILL" align="center" position="0 0.18 0.01" width="1.4" color="#1a1c1e"></a-text>
           <a-text id="end-body" value="" align="center" position="0 -0.08 0.01" width="1.35" wrap-count="34" color="#2a2e32"></a-text>
-          <a-plane id="hot-restart-win" class="clickable" position="0 -0.42 0.02" width="0.55" height="0.14"
+          <a-plane id="hot-restart-win" position="0 -0.42 0.02" width="0.55" height="0.14"
             data-id="restart-win"
             material="shader: flat; color: #1a1c1e; depthTest: false"></a-plane>
           <a-text value="AGAIN" align="center" position="0 -0.42 0.03" width="1.1" color="#f4f1ea"></a-text>
@@ -394,10 +394,10 @@
             material="shader: flat; color: #6b0b14; depthTest: false"></a-plane>
           <a-text value="THE THING HAS CONSUMED YOU" align="center" position="0 0.12 0.01" width="1.7" color="#f3e6e6"></a-text>
           <a-text value="Better luck next time." align="center" position="0 -0.08 0.01" width="1.4" color="#e8c8c8"></a-text>
-          <a-box id="hot-defib-left" class="clickable" position="-0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
+          <a-box id="hot-defib-left" position="-0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
             data-id="defib-left"
             material="shader: flat; color: #2a0c10; depthTest: false"></a-box>
-          <a-box id="hot-defib-right" class="clickable" position="0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
+          <a-box id="hot-defib-right" position="0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
             data-id="defib-right"
             material="shader: flat; color: #2a0c10; depthTest: false"></a-box>
           <a-text value="PADDLE" align="center" position="-0.28 -0.38 0.08" width="0.7" color="#f3e6e6"></a-text>
@@ -730,6 +730,13 @@
             el = el.parentEl;
           }
           if (!el || !el.dataset.id || el.dataset.id === 'slate') return null;
+          let walk = el;
+          while (walk) {
+            if (walk.object3D && walk.object3D.visible === false) return null;
+            const v = walk.getAttribute && walk.getAttribute('visible');
+            if (v === false || v === 'false') return null;
+            walk = walk.parentEl;
+          }
           return el;
         };
         const fire = () => {
@@ -779,11 +786,24 @@
           document.getElementById('intro-wrap').classList.remove('on');
           const vrBoot = document.querySelector('#vr-boot');
           const vrIntro = document.querySelector('#vr-intro');
-          if (!Game.started && vrBoot) vrBoot.setAttribute('visible', true);
+          if (!Game.started && vrBoot) {
+            vrBoot.setAttribute('visible', true);
+            hudClick('hot-descend', true);
+          }
           if (Game.started && vrIntro) vrIntro.setAttribute('visible', false);
         });
       }
     });
+
+    function hudClick(id, on) {
+      const el = document.querySelector('#' + id);
+      if (!el) return;
+      if (on) el.classList.add('clickable');
+      else el.classList.remove('clickable');
+    }
+    function clearHudHits() {
+      ['hot-descend', 'hot-skip-intro', 'hot-restart-win', 'hot-defib-left', 'hot-defib-right'].forEach((id) => hudClick(id, false));
+    }
 
     function rayHitsId(handSel, id) {
       const rc = document.querySelector(handSel) && document.querySelector(handSel).components.raycaster;
@@ -1019,6 +1039,7 @@
         return;
       }
       if (id === 'descend-vr') {
+        if (Game.started) return;
         playIntroThenVault();
         return;
       }
@@ -1045,10 +1066,14 @@
         return;
       }
       if (id === 'restart-win') {
+        const card = document.querySelector('#end-card');
+        if (!card || card.getAttribute('visible') === false) return;
         restartGame();
         return;
       }
       if (id === 'defib-left' || id === 'defib-right') {
+        const card = document.querySelector('#death-card');
+        if (!card || card.getAttribute('visible') === false) return;
         const now = performance.now();
         if (id === 'defib-left') Game.defibL = now;
         else Game.defibR = now;
@@ -1541,6 +1566,8 @@
       if (skip) skip.classList.remove('clickable');
       const card = document.querySelector('#death-card');
       if (card) card.setAttribute('visible', true);
+      hudClick('hot-defib-left', true);
+      hudClick('hot-defib-right', true);
     }
     function playTone(type, startF, endF, dur, gain, filterType, filterF, q) {
       const ctx = ensureAudio();
@@ -1631,13 +1658,11 @@
     }
 
     buildTextures();
+    clearHudHits();
     function hideMenuCards() {
       const vrBoot = document.querySelector('#vr-boot');
       if (vrBoot) vrBoot.setAttribute('visible', false);
-      const d = document.querySelector('#hot-descend');
-      if (d) d.classList.remove('clickable');
-      const s = document.querySelector('#hot-skip-intro');
-      if (s) s.classList.remove('clickable');
+      clearHudHits();
       document.getElementById('boot').style.display = 'none';
     }
     function restartGame() {
@@ -1666,6 +1691,7 @@
       Game.defibL = 0;
       Game.defibR = 0;
       hideSlate();
+      clearHudHits();
       const hideIds = ['end-card', 'death-card', 'vr-intro', 'well-clock', 'warn-hurry', 'warn-look', 'jump-choir', 'jump-horror', 'stairs'];
       hideIds.forEach((id) => {
         const el = document.querySelector('#' + id);
@@ -1811,9 +1837,11 @@
       const body = document.querySelector('#end-body');
       if (body) body.setAttribute('value', 'The shaft lets go. The nightmare could not keep you.');
       if (card) card.setAttribute('visible', true);
+      hudClick('hot-restart-win', true);
     }
     function playIntroThenVault() {
       hideMenuCards();
+      hudClick('hot-skip-intro', true);
       const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
       const asset = document.getElementById('intro-asset');
       const flat = document.getElementById('intro');
