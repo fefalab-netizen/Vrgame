@@ -102,8 +102,10 @@
     visible="true">
 
     <a-assets timeout="15000">
-      <img id="tex-wall" crossorigin="anonymous">
-      <img id="tex-floor" crossorigin="anonymous">
+      <img id="tex-wall" src="textures/wall.jpg" crossorigin="anonymous">
+      <img id="tex-wall-n" src="textures/wall_n.jpg" crossorigin="anonymous">
+      <img id="tex-floor" src="textures/wall.jpg" crossorigin="anonymous">
+      <img id="tex-floor-n" src="textures/floor_n.jpg" crossorigin="anonymous">
       <img id="tex-ceil" crossorigin="anonymous">
       <img id="tex-door" crossorigin="anonymous">
       <img id="tex-throat" src="paintings/throat.jpg" crossorigin="anonymous">
@@ -551,17 +553,42 @@
       }
       return c.toDataURL('image/jpeg', 0.8);
     }
+    function paintFallback(img, fn) {
+      if (!img) return;
+      const go = () => { if (!img.naturalWidth) img.src = fn(); };
+      if (img.complete) go();
+      else img.addEventListener('error', () => { img.src = fn(); });
+    }
+    function applyNormals() {
+      document.querySelectorAll('a-plane, a-box, a-cylinder').forEach((el) => {
+        const mat = el.getAttribute('material');
+        if (!mat || !mat.src) return;
+        if (mat.src === '#tex-wall' || mat.src === '#tex-ceil') {
+          el.setAttribute('material', 'normalMap', '#tex-wall-n');
+          el.setAttribute('material', 'normalScale', '1.15 1.15');
+        }
+        if (mat.src === '#tex-floor') {
+          el.setAttribute('material', 'normalMap', '#tex-floor-n');
+          el.setAttribute('material', 'normalScale', '1 1');
+        }
+      });
+    }
     function buildTextures() {
-      document.querySelector('#tex-wall').src = paintStone(1024, 1024, 90210, {
+      paintFallback(document.querySelector('#tex-wall'), () => paintStone(1024, 1024, 90210, {
         r0: 58, rd: 48, g0: 62, gd: 46, b0: 66, bd: 50, brickX: 160, brickY: 86, cracks: 26
-      });
-      document.querySelector('#tex-floor').src = paintStone(1024, 1024, 441, {
+      }));
+      paintFallback(document.querySelector('#tex-floor'), () => paintStone(1024, 1024, 441, {
         r0: 42, rd: 36, g0: 44, gd: 34, b0: 48, bd: 38, brickX: 110, brickY: 110, mortar: 0.06, cracks: 12
-      });
+      }));
       document.querySelector('#tex-ceil').src = paintStone(512, 512, 77, {
         r0: 36, rd: 24, g0: 38, gd: 22, b0: 42, bd: 26, brickX: 90, brickY: 70, cracks: 10
       });
       document.querySelector('#tex-door').src = paintIron(512, 1024, 13);
+      const done = () => applyNormals();
+      const wall = document.querySelector('#tex-wall');
+      if (wall && wall.complete && wall.naturalWidth) done();
+      else if (wall) wall.addEventListener('load', done);
+      setTimeout(done, 1200);
     }
 
     /* Raw THREE.SpotLight — A-Frame's <a-light> resets aim every frame. */
