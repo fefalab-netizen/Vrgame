@@ -116,6 +116,7 @@
       <video id="intro-asset" src="Intro1.mp4" playsinline webkit-playsinline preload="auto"></video>
       <video id="outro-asset" src="Outro.mp4" playsinline webkit-playsinline preload="auto"></video>
       <video id="outro2-asset" src="Outro2.mp4" playsinline webkit-playsinline preload="auto"></video>
+      <audio id="sfx-jump" src="jumpscare.mp3" preload="auto"></audio>
     </a-assets>
 
     <a-entity light="type: ambient; color: #121416; intensity: 0.07"></a-entity>
@@ -171,16 +172,14 @@
       <a-box id="hot-stone" class="clickable" position="2.05 1.15 -3.42"
         width="0.55" height="0.4" depth="0.18"
         data-id="stone"
-        material="shader: standard; src: #tex-wall; roughness: 0.88; color: #8a9388; emissive: #3a4a34; emissiveIntensity: 0.38"
+        material="shader: standard; src: #tex-wall; roughness: 0.88; color: #8a9388; emissive: #3a4a34; emissiveIntensity: 0.08"
         hover-glow></a-box>
 
       <a-plane id="hot-carving" class="clickable" position="-2.15 1.55 -3.36"
         width="0.9" height="0.9"
         data-id="carving"
-        material="shader: standard; src: #tex-wall; color: #4a524c; roughness: 1; emissive: #243028; emissiveIntensity: 0.28"
+        material="shader: standard; src: #tex-wall; color: #4a524c; roughness: 1; emissive: #243028; emissiveIntensity: 0.06"
         hover-glow>
-        <a-text value="IA" align="center" position="0 0.08 0.02" width="2.2" color="#b7c4b0"></a-text>
-        <a-text value="∠" align="center" position="0 -0.16 0.02" width="1.6" color="#8a9a84"></a-text>
       </a-plane>
 
       <a-cylinder id="hot-drain" class="clickable" position="0 0.04 1.6"
@@ -326,12 +325,12 @@
       <a-entity position="0 8.4 0" light="type: point; color: #e8e2d4; intensity: 1.6; distance: 12; decay: 1.1"></a-entity>
       <a-entity position="0 6 0" light="type: spot; color: #f0ece0; intensity: 1.1; angle: 18; penumbra: 0.45; distance: 10" rotation="90 0 0"></a-entity>
       <a-entity id="warn-hurry" visible="false">
-        <a-text value="HURRY!!!" align="center" position="0 2.3 -1.28" rotation="0 0 0" width="5" color="#c81e1e"></a-text>
-        <a-text value="HURRY!!!" align="center" position="0 3.8 1.28" rotation="0 180 0" width="5" color="#a81818"></a-text>
-        <a-text value="HURRY!!!" align="center" position="-1.28 2.9 0" rotation="0 90 0" width="5" color="#d02424"></a-text>
-        <a-text value="HURRY!!!" align="center" position="1.28 4.6 0" rotation="0 -90 0" width="5" color="#b01616"></a-text>
-        <a-text value="HURRY!!!" align="center" position="0.9 5.4 -0.9" rotation="0 -45 0" width="4.2" color="#c81e1e"></a-text>
-        <a-text value="HURRY!!!" align="center" position="-0.9 1.8 0.9" rotation="0 135 0" width="4.2" color="#8a1010"></a-text>
+        <a-text value="HURRY!!!" align="center" position="0 0.95 -1.28" rotation="0 0 0" width="5" color="#c81e1e"></a-text>
+        <a-text value="HURRY!!!" align="center" position="0 1.35 1.28" rotation="0 180 0" width="5" color="#a81818"></a-text>
+        <a-text value="HURRY!!!" align="center" position="-1.28 1.15 0" rotation="0 90 0" width="5" color="#d02424"></a-text>
+        <a-text value="HURRY!!!" align="center" position="1.28 1.55 0" rotation="0 -90 0" width="5" color="#b01616"></a-text>
+        <a-text value="HURRY!!!" align="center" position="0.9 1.75 -0.9" rotation="0 -45 0" width="4.2" color="#c81e1e"></a-text>
+        <a-text value="HURRY!!!" align="center" position="-0.9 0.75 0.9" rotation="0 135 0" width="4.2" color="#8a1010"></a-text>
       </a-entity>
       <a-entity id="warn-look" visible="false">
         <a-text value="LOOK UP!!" align="center" position="0 5.2 -1.28" rotation="0 0 0" width="5.2" color="#e8e4d8"></a-text>
@@ -368,14 +367,14 @@
           <a-text value="DESCEND" align="center" position="0 -0.32 0.03" width="1.2" color="#c4cdc0"></a-text>
         </a-entity>
         <a-entity id="vr-intro" visible="false" position="0 0 -1.15">
-          <a-plane width="4.2" height="3.2" position="0 0 -0.04"
+          <a-plane width="3.8" height="2.9" position="0 0 -0.04"
             material="shader: flat; color: #000000; depthTest: false"></a-plane>
-          <a-video id="vr-intro-plane" src="#intro-asset" width="1.7" height="0.96"
+          <a-video id="vr-intro-plane" src="#intro-asset" width="1.53" height="0.86"
             material="shader: flat; depthTest: false"></a-video>
-          <a-plane id="hot-skip-intro" class="clickable" position="0.85 -0.75 0.02" width="0.4" height="0.12"
+          <a-plane id="hot-skip-intro" class="clickable" position="0 -0.56 0.02" width="0.42" height="0.13"
             data-id="skip-intro-vr"
             material="shader: flat; color: #121416; depthTest: false"></a-plane>
-          <a-text value="SKIP" align="center" position="0.85 -0.75 0.03" width="0.7" color="#8a928c"></a-text>
+          <a-text value="SKIP" align="center" position="0 -0.56 0.03" width="0.7" color="#8a928c"></a-text>
         </a-entity>
         <a-entity id="end-card" visible="false" position="0 0 -1.2">
           <a-plane width="4.2" height="3.2" position="0 0 -0.03"
@@ -384,16 +383,29 @@
             material="shader: flat; color: #ffffff; depthTest: false"></a-plane>
           <a-text id="end-title" value="YOU STOOD STILL" align="center" position="0 0.18 0.01" width="1.4" color="#1a1c1e"></a-text>
           <a-text id="end-body" value="" align="center" position="0 -0.08 0.01" width="1.35" wrap-count="34" color="#2a2e32"></a-text>
+          <a-plane id="hot-restart-win" class="clickable" position="0 -0.42 0.02" width="0.55" height="0.14"
+            data-id="restart-win"
+            material="shader: flat; color: #1a1c1e; depthTest: false"></a-plane>
+          <a-text value="AGAIN" align="center" position="0 -0.42 0.03" width="1.1" color="#f4f1ea"></a-text>
         </a-entity>
         <a-text id="well-clock" value="" align="center" position="0 -0.38 -1.05" width="1.1" color="#e8e4d8" visible="false"></a-text>
         <a-entity id="death-card" visible="false" position="0 0 -1.15">
           <a-plane width="4.2" height="3.2" position="0 0 -0.03"
             material="shader: flat; color: #6b0b14; depthTest: false"></a-plane>
           <a-text value="THE THING HAS CONSUMED YOU" align="center" position="0 0.12 0.01" width="1.7" color="#f3e6e6"></a-text>
-          <a-text value="Better luck next time." align="center" position="0 -0.12 0.01" width="1.4" color="#e8c8c8"></a-text>
+          <a-text value="Better luck next time." align="center" position="0 -0.08 0.01" width="1.4" color="#e8c8c8"></a-text>
+          <a-box id="hot-defib-left" class="clickable" position="-0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
+            data-id="defib-left"
+            material="shader: flat; color: #2a0c10; depthTest: false"></a-box>
+          <a-box id="hot-defib-right" class="clickable" position="0.28 -0.38 0.04" width="0.34" height="0.18" depth="0.06"
+            data-id="defib-right"
+            material="shader: flat; color: #2a0c10; depthTest: false"></a-box>
+          <a-text value="PADDLE" align="center" position="-0.28 -0.38 0.08" width="0.7" color="#f3e6e6"></a-text>
+          <a-text value="PADDLE" align="center" position="0.28 -0.38 0.08" width="0.7" color="#f3e6e6"></a-text>
+          <a-text value="BOTH HANDS" align="center" position="0 -0.56 0.03" width="1.2" color="#c89898"></a-text>
         </a-entity>
-        <a-image id="jump-choir" src="#tex-choir" width="1.35" height="2.0" position="0 0 -0.62" visible="false"></a-image>
-        <a-image id="jump-horror" src="#tex-horror" width="2.15" height="1.35" position="0 0 -0.62" visible="false"></a-image>
+        <a-image id="jump-choir" src="#tex-choir" width="1.35" height="2.0" position="0 0 -1.05" visible="false"></a-image>
+        <a-image id="jump-horror" src="#tex-horror" width="2.15" height="1.35" position="0 0 -1.05" visible="false"></a-image>
       </a-camera>
 
       <a-entity id="leftHand"
@@ -439,6 +451,8 @@
       lastClimb: 0,
       climbDone: false,
       playingOutro: false,
+      defibL: 0,
+      defibR: 0,
       wellTicking: false,
       wellLeft: 25,
       wellAcc: 0,
@@ -974,7 +988,7 @@
         return;
       }
       if (id === 'carving') {
-        showSlate('THE ANGLE', 'IA. A mark for that which is not dead, and a corner that will not stay a corner when both lamps cross it.', el);
+        showSlate('POINT AND CLICK', 'Point until it glows. Trigger to read. The room answers only what you touch.', el);
         return;
       }
       if (id === 'drain') {
@@ -1030,6 +1044,19 @@
         showSlate('A CANVAS', 'One lamp is a glance. Both lamps are an invitation.', el);
         return;
       }
+      if (id === 'restart-win') {
+        restartGame();
+        return;
+      }
+      if (id === 'defib-left' || id === 'defib-right') {
+        const now = performance.now();
+        if (id === 'defib-left') Game.defibL = now;
+        else Game.defibR = now;
+        if (Math.abs((Game.defibL || 0) - (Game.defibR || 0)) < 700 && Game.defibL && Game.defibR) {
+          restartGame();
+        }
+        return;
+      }
       if (id === 'wellmouth') {
         if (Game.climbDone) return;
         Game.lastClimb = performance.now();
@@ -1075,7 +1102,7 @@
       }
       const next = Game.riteOrder[Game.rite.length];
       if (name !== next) {
-        resetRite('Wrong mouth. The rite is older than the stones: throat, angle, drowned, choir.', anchor);
+        resetRite('Wrong mouth. The rite is older than the stones.', anchor);
         return;
       }
       Game.rite.push(name);
@@ -1394,6 +1421,21 @@
     }
 
     function screech() {
+      const a = document.getElementById('sfx-jump');
+      if (a) {
+        try {
+          a.currentTime = 0;
+          const p = a.play();
+          if (p && p.catch) {
+            p.catch(() => screechSynth());
+            return;
+          }
+          return;
+        } catch (e) {}
+      }
+      screechSynth();
+    }
+    function screechSynth() {
       const ctx = ensureAudio();
       const t0 = ctx.currentTime;
       const dur = 1.35;
@@ -1597,6 +1639,77 @@
       const s = document.querySelector('#hot-skip-intro');
       if (s) s.classList.remove('clickable');
       document.getElementById('boot').style.display = 'none';
+    }
+    function restartGame() {
+      Game.level = 1;
+      Game.hasKey = false;
+      Game.doorOpen = false;
+      Game.entering = false;
+      Game.slateOpen = false;
+      Game.rite = [];
+      Game.riteDone = false;
+      Game.started = true;
+      Game.basementDone = false;
+      Game.wellCharge = 0;
+      Game.canvasLock = false;
+      Game.canvasCounting = false;
+      Game.sawWell = false;
+      Game.climbY = 0;
+      Game.climbVel = 0;
+      Game.lastClimb = 0;
+      Game.climbDone = false;
+      Game.playingOutro = false;
+      Game.wellTicking = false;
+      Game.wellLeft = 25;
+      Game.wellAcc = 0;
+      Game.dead = false;
+      Game.defibL = 0;
+      Game.defibR = 0;
+      hideSlate();
+      const hideIds = ['end-card', 'death-card', 'vr-intro', 'well-clock', 'warn-hurry', 'warn-look', 'jump-choir', 'jump-horror', 'stairs'];
+      hideIds.forEach((id) => {
+        const el = document.querySelector('#' + id);
+        if (el) el.setAttribute('visible', false);
+      });
+      const altar = document.querySelector('#hot-altar');
+      if (altar) {
+        altar.setAttribute('visible', true);
+        altar.classList.add('clickable');
+      }
+      const stone = document.querySelector('#hot-stone');
+      if (stone) {
+        stone.setAttribute('position', '2.05 1.15 -3.42');
+        stone.setAttribute('rotation', '0 0 0');
+        stone.setAttribute('material', 'emissiveIntensity', 0.08);
+      }
+      const key = document.querySelector('#hot-key');
+      if (key) key.setAttribute('visible', false);
+      const door = document.querySelector('#door-pivot');
+      if (door) {
+        door.removeAttribute('animation');
+        door.setAttribute('rotation', '0 0 0');
+      }
+      const mouth = document.querySelector('#hot-wellmouth');
+      if (mouth) {
+        mouth.setAttribute('visible', true);
+        mouth.classList.add('clickable');
+      }
+      const wellLight = document.querySelector('#well-light');
+      if (wellLight) wellLight.setAttribute('visible', true);
+      if (typeof resetCanvasRite === 'function') resetCanvasRite();
+      if (Game.riteOrder) Game.riteOrder.forEach((n) => setIdolLit(n, false));
+      const rig = document.querySelector('#rig');
+      if (rig) rig.setAttribute('position', '0 0 0');
+      const ember = document.querySelector('#ember');
+      if (ember) {
+        ember.setAttribute('visible', true);
+        ember.setAttribute('light', 'color: #3a4a3a; intensity: 0.16; distance: 3.2');
+      }
+      document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #0b0c0e; near: 0.5; far: 8.8');
+      document.querySelector('#scene').setAttribute('background', 'color: #08090b');
+      setLevelLive(1);
+      document.getElementById('hint').textContent = 'Point until it glows · trigger to read';
+      startAmbience();
     }
     function beginVault() {
       Game.started = true;
