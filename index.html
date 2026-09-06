@@ -92,7 +92,7 @@
   <a-scene
     id="scene"
     vr-mode-ui="enabled: true"
-    webxr="optionalFeatures: local-floor,hand-tracking; referenceSpaceType: local-floor"
+    webxr="optionalFeatures: local-floor,hand-tracking,bounded-floor; referenceSpaceType: local-floor"
     renderer="colorManagement: true; physicallyCorrectLights: false; antialias: true"
     fog="type: linear; color: #0b0c0e; near: 0.5; far: 8.8"
     background="color: #08090b"
@@ -423,16 +423,20 @@
 
       <a-entity id="leftHand"
         laser-controls="hand: left"
+        hand-tracking-controls="hand: left; modelStyle: dots; modelColor: #c8d4c4"
         raycaster="objects: .clickable, .solid; far: 28; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: left; color: #dce6d6; intensity: 6.5"
+        finger-aim="hand: left"
         keep-ray
         pointer-interact>
       </a-entity>
 
       <a-entity id="rightHand"
         laser-controls="hand: right"
+        hand-tracking-controls="hand: right; modelStyle: dots; modelColor: #c8d4c4"
         raycaster="objects: .clickable, .solid; far: 28; showLine: true; lineColor: #9aaa96; lineOpacity: 0.85"
         hand-flashlight="hand: right; color: #e4ece2; intensity: 6.5"
+        finger-aim="hand: right"
         keep-ray
         pointer-interact>
       </a-entity>
@@ -705,6 +709,44 @@
       }
     });
 
+    AFRAME.registerComponent('finger-aim', {
+      schema: { hand: { type: 'string', default: 'left' } },
+      init: function () {
+        this._q = new THREE.Quaternion();
+        this._fwd = new THREE.Vector3();
+      },
+      tick: function () {
+        const scene = this.el.sceneEl;
+        const session = scene && (scene.xrSession || (scene.renderer && scene.renderer.xr && scene.renderer.xr.getSession && scene.renderer.xr.getSession()));
+        const frame = scene && scene.frame;
+        if (!session || !frame || !session.inputSources) return;
+        let ref = null;
+        try { ref = scene.renderer.xr.getReferenceSpace(); } catch (e) { return; }
+        if (!ref) return;
+        for (let i = 0; i < session.inputSources.length; i++) {
+          const src = session.inputSources[i];
+          if (!src.hand || src.handedness !== this.data.hand) continue;
+          const tip = src.hand.get && src.hand.get('index-finger-tip');
+          const mid = src.hand.get && src.hand.get('index-finger-phalanx-proximal');
+          if (!tip || !mid) return;
+          const tipPose = frame.getJointPose(tip, ref);
+          const midPose = frame.getJointPose(mid, ref);
+          if (!tipPose || !midPose) return;
+          const obj = this.el.object3D;
+          obj.position.set(tipPose.transform.position.x, tipPose.transform.position.y, tipPose.transform.position.z);
+          this._fwd.set(
+            tipPose.transform.position.x - midPose.transform.position.x,
+            tipPose.transform.position.y - midPose.transform.position.y,
+            tipPose.transform.position.z - midPose.transform.position.z
+          );
+          if (this._fwd.lengthSq() < 0.00001) return;
+          this._fwd.normalize();
+          obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), this._fwd);
+          obj.updateMatrixWorld(true);
+        }
+      }
+    });
+
     AFRAME.registerComponent('keep-ray', {
       init: function () {
         const apply = () => {
@@ -787,6 +829,7 @@
           if (Game.slateOpen) hideSlate();
         };
         this.el.addEventListener('triggerdown', fire);
+        this.el.addEventListener('pinchstarted', fire);
         this.el.addEventListener('abuttondown', fire);
         this.el.addEventListener('xbuttondown', fire);
         this.el.addEventListener('bbuttondown', closeOnly);
@@ -1808,7 +1851,7 @@
       Game.defibR = 0;
       hideSlate();
       clearHudHits();
-      const hideIds = ['end-card', 'death-card', 'vr-intro', 'well-clock', 'warn-hurry', 'warn-look', 'jump-choir', 'jump-horror', 'stairs'];
+      const hideIds = ['end-card', 'death-card', 'vr-intro', 'well-clock', 'warn-hurry', 'warn-look', 'jump-choir', 'jump-horror', 'stairs', 'level-lose'];
       hideIds.forEach((id) => {
         const el = document.querySelector('#' + id);
         if (el) el.setAttribute('visible', false);
