@@ -347,6 +347,14 @@
       </a-entity>
     </a-entity>
 
+    <a-entity id="level-lose" visible="false" position="0 -80 0">
+      <a-box width="8" height="8" depth="8" position="0 2 0"
+        material="shader: flat; color: #6b0b14; side: back"></a-box>
+      <a-plane width="8" height="8" position="0 0 0" rotation="-90 0 0"
+        material="shader: flat; color: #4a0810"></a-plane>
+      <a-entity light="type: point; color: #c81e1e; intensity: 0.9; distance: 8" position="0 2.2 0"></a-entity>
+    </a-entity>
+
     <a-entity id="rig" position="0 0 0">
       <a-camera id="cam" look-controls="pointerLockEnabled: true" wasd-controls="enabled: false" position="0 1.6 0">
         <a-entity
@@ -974,17 +982,43 @@
       if (wc) wc.setAttribute('visible', false);
     }
 
+    function enterLoseRoom() {
+      Game.dead = true;
+      Game.entering = true;
+      Game.roomTicking = false;
+      Game.wellTicking = false;
+      Game.climbVel = 0;
+      Game.climbY = 0;
+      hideSlate();
+      stopRoomClock();
+      setLevelLive(0);
+      const lose = document.querySelector('#level-lose');
+      if (lose) {
+        lose.setAttribute('visible', true);
+        lose.setAttribute('position', '0 0 0');
+      }
+      const rig = document.querySelector('#rig');
+      if (rig) rig.setAttribute('position', '0 0 0');
+      const ember = document.querySelector('#ember');
+      if (ember) ember.setAttribute('visible', false);
+      ['warn-hurry', 'warn-look', 'well-clock', 'vr-intro', 'end-card'].forEach((id) => {
+        const el = document.querySelector('#' + id);
+        if (el) el.setAttribute('visible', false);
+      });
+      document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #4a0810; near: 0.2; far: 6');
+      document.querySelector('#scene').setAttribute('background', 'color: #3a060c');
+    }
+
     function timeoutDeath() {
       if (Game.dead || Game.playingOutro) return;
-      stopRoomClock();
-      hideSlate();
+      enterLoseRoom();
       const img = document.querySelector('#jump-horror');
       if (img) img.setAttribute('visible', true);
       screech();
       setTimeout(() => {
         if (img) img.setAttribute('visible', false);
-        dieInWell();
-      }, 700);
+        playDeathOutro();
+      }, 800);
     }
 
     AFRAME.registerComponent('room-clocks', {
@@ -1627,13 +1661,8 @@
     }
 
     function dieInWell() {
-      if (Game.dead || Game.climbDone) return;
-      Game.dead = true;
-      Game.wellTicking = false;
-      Game.climbVel = 0;
-      const clock = document.querySelector('#well-clock');
-      if (clock) clock.setAttribute('visible', false);
-      hideSlate();
+      if (Game.climbDone || Game.playingOutro) return;
+      if (!Game.dead) enterLoseRoom();
       playDeathOutro();
     }
 
