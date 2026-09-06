@@ -712,10 +712,15 @@
     AFRAME.registerComponent('finger-aim', {
       schema: { hand: { type: 'string', default: 'left' } },
       init: function () {
-        this._q = new THREE.Quaternion();
         this._fwd = new THREE.Vector3();
+        this._from = new THREE.Vector3(0, 0, -1);
+        this._pos = new THREE.Vector3();
+        this._smoothF = new THREE.Vector3(0, 0, -1);
+        this._smoothP = new THREE.Vector3();
+        this._ready = false;
       },
       tick: function () {
+        if (this.el._pinching) return;
         const scene = this.el.sceneEl;
         const session = scene && (scene.xrSession || (scene.renderer && scene.renderer.xr && scene.renderer.xr.getSession && scene.renderer.xr.getSession()));
         const frame = scene && scene.frame;
@@ -726,22 +731,32 @@
         for (let i = 0; i < session.inputSources.length; i++) {
           const src = session.inputSources[i];
           if (!src.hand || src.handedness !== this.data.hand) continue;
-          const tip = src.hand.get && src.hand.get('index-finger-tip');
-          const mid = src.hand.get && src.hand.get('index-finger-phalanx-proximal');
-          if (!tip || !mid) return;
-          const tipPose = frame.getJointPose(tip, ref);
-          const midPose = frame.getJointPose(mid, ref);
-          if (!tipPose || !midPose) return;
-          const obj = this.el.object3D;
-          obj.position.set(tipPose.transform.position.x, tipPose.transform.position.y, tipPose.transform.position.z);
+          const knuckle = src.hand.get && (src.hand.get('index-finger-metacarpal') || src.hand.get('wrist'));
+          const prox = src.hand.get && src.hand.get('index-finger-phalanx-proximal');
+          if (!knuckle || !prox) return;
+          const kPose = frame.getJointPose(knuckle, ref);
+          const pPose = frame.getJointPose(prox, ref);
+          if (!kPose || !pPose) return;
+          this._pos.set(kPose.transform.position.x, kPose.transform.position.y, kPose.transform.position.z);
           this._fwd.set(
-            tipPose.transform.position.x - midPose.transform.position.x,
-            tipPose.transform.position.y - midPose.transform.position.y,
-            tipPose.transform.position.z - midPose.transform.position.z
+            pPose.transform.position.x - kPose.transform.position.x,
+            pPose.transform.position.y - kPose.transform.position.y,
+            pPose.transform.position.z - kPose.transform.position.z
           );
           if (this._fwd.lengthSq() < 0.00001) return;
           this._fwd.normalize();
-          obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), this._fwd);
+          if (!this._ready) {
+            this._smoothP.copy(this._pos);
+            this._smoothF.copy(this._fwd);
+            this._ready = true;
+          } else {
+            this._smoothP.lerp(this._pos, 0.28);
+            this._smoothF.lerp(this._fwd, 0.22);
+            this._smoothF.normalize();
+          }
+          const obj = this.el.object3D;
+          obj.position.copy(this._smoothP);
+          obj.quaternion.setFromUnitVectors(this._from, this._smoothF);
           obj.updateMatrixWorld(true);
         }
       }
@@ -768,6 +783,8 @@
     AFRAME.registerComponent('pointer-interact', {
       init: function () {
         this._lock = 0;
+        this._sticky = null;
+        this._stickyAt = 0;
         const hotspotFromRay = () => {
           const rc = this.el.components.raycaster;
           const hits = rc && rc.intersections;
@@ -801,7 +818,10 @@
         const fire = () => {
           const now = performance.now();
           if (now - this._lock < 120) return;
-          const target = hotspotFromRay();
+          let target = hotspotFromRay();
+          if ((!target || !target.dataset.id) && this._sticky && now - this._stickyAt < 450) {
+            target = this._sticky;
+          }
           if (target) {
             this._lock = now;
             useHotspot(target.dataset.id, target);
