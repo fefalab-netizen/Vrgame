@@ -99,6 +99,7 @@
     crypt-world
     double-beam
     well-climb
+    room-clocks
     visible="true">
 
     <a-assets timeout="15000">
@@ -166,6 +167,7 @@
             material="color: #1c1e20; metalness: 0.75; roughness: 0.35"></a-box>
         </a-box>
       </a-entity>
+      <a-text id="clock-1" value="" align="center" position="0 2.7 -3.2" width="3.2" color="#e8e4d8"></a-text>
       <a-box position="0 1.35 -3.52" width="1.36" height="2.36" depth="0.04"
         material="color: #1a1c1e; roughness: 0.85"></a-box>
 
@@ -222,6 +224,7 @@
         data-id="altar"
         material="shader: standard; color: #2a2e30; metalness: 0.25; roughness: 0.7; emissive: #1a2a1c; emissiveIntensity: 0.28"
         hover-glow></a-box>
+      <a-text id="clock-2" value="" align="center" position="0 1.85 -3.05" width="3.2" color="#e8e4d8"></a-text>
       <a-entity id="stairs" visible="false" position="0 0.15 -3.2">
         <a-box position="0 0.05 0.35" width="1.1" height="0.12" depth="0.38" material="color: #2a2e30"></a-box>
         <a-box position="0 0.18 0.12" width="1.0" height="0.12" depth="0.38" material="color: #262a2c"></a-box>
@@ -296,11 +299,13 @@
         width="1.15" height="1.5" data-id="lie-left"
         material="shader: standard; src: #tex-wall; color: #2a3030; emissive: #1a1010; emissiveIntensity: 0.12"
         hover-glow></a-plane>
+      <a-text id="clock-3a" value="" align="center" position="-2.5 2.55 0" rotation="0 90 0" width="3" color="#e8e4d8"></a-text>
       <a-text id="count-left" value="" align="center" position="-2.5 2.35 0" rotation="0 90 0" width="3" color="#e8e4dc"></a-text>
       <a-plane id="hot-lie-right" class="clickable" position="2.82 1.45 0" rotation="0 -90 0"
         width="1.15" height="1.5" data-id="lie-right"
         material="shader: standard; src: #tex-wall; color: #2a3030; emissive: #1a1010; emissiveIntensity: 0.12"
         hover-glow></a-plane>
+      <a-text id="clock-3b" value="" align="center" position="2.5 2.55 0" rotation="0 -90 0" width="3" color="#e8e4d8"></a-text>
       <a-text id="count-right" value="" align="center" position="2.5 2.35 0" rotation="0 -90 0" width="3" color="#e8e4dc"></a-text>
 
       <a-box id="hot-tablet" class="clickable" position="0 1.05 -2.85" width="0.8" height="0.35" depth="0.08"
@@ -456,8 +461,12 @@
       wellTicking: false,
       wellLeft: 25,
       wellAcc: 0,
-      dead: false
+      dead: false,
+      roomTicking: false,
+      roomLeft: 0,
+      roomAcc: 0
     };
+    const ROOM_LIMIT = { 1: 25, 2: 30, 3: 22, 4: 25 };
 
     function mulberry32(a) {
       return function () {
@@ -903,7 +912,7 @@
               if (l) l.setAttribute('visible', true);
             }
             if (Game.wellLeft <= 0) {
-              dieInWell();
+              timeoutDeath();
               return;
             }
           }
@@ -920,6 +929,76 @@
         const rig = document.querySelector('#rig');
         if (rig) rig.setAttribute('position', '0 ' + Game.climbY.toFixed(3) + ' 0');
         if (Game.climbY >= 6.6) reachWellExit();
+      }
+    });
+
+    function paintRoomClocks(val) {
+      const n = Game.level;
+      const text = (val == null || val === '') ? '' : String(val);
+      const map = {
+        1: ['clock-1'],
+        2: ['clock-2'],
+        3: ['clock-3a', 'clock-3b'],
+        4: ['well-clock']
+      };
+      ['clock-1', 'clock-2', 'clock-3a', 'clock-3b'].forEach((id) => {
+        const el = document.querySelector('#' + id);
+        if (el) el.setAttribute('value', (map[n] || []).indexOf(id) >= 0 ? text : '');
+      });
+      const wc = document.querySelector('#well-clock');
+      if (wc && n !== 4) {
+        wc.setAttribute('visible', false);
+        wc.setAttribute('value', '');
+      }
+    }
+
+    function startRoomClock(n) {
+      Game.roomTicking = true;
+      Game.roomLeft = ROOM_LIMIT[n] || 25;
+      Game.roomAcc = 0;
+      paintRoomClocks(Game.roomLeft);
+      if (n === 4) {
+        const wc = document.querySelector('#well-clock');
+        if (wc) {
+          wc.setAttribute('value', String(Game.roomLeft));
+          wc.setAttribute('visible', true);
+        }
+      }
+    }
+
+    function stopRoomClock() {
+      Game.roomTicking = false;
+      Game.wellTicking = false;
+      paintRoomClocks('');
+      const wc = document.querySelector('#well-clock');
+      if (wc) wc.setAttribute('visible', false);
+    }
+
+    function timeoutDeath() {
+      if (Game.dead || Game.playingOutro) return;
+      stopRoomClock();
+      hideSlate();
+      const img = document.querySelector('#jump-horror');
+      if (img) img.setAttribute('visible', true);
+      screech();
+      setTimeout(() => {
+        if (img) img.setAttribute('visible', false);
+        dieInWell();
+      }, 700);
+    }
+
+    AFRAME.registerComponent('room-clocks', {
+      tick: function (t, dt) {
+        if (!Game.started || !Game.roomTicking || Game.entering || Game.dead || Game.playingOutro) return;
+        if (Game.level === 4) return;
+        const ms = dt || 16;
+        Game.roomAcc += ms;
+        if (Game.roomAcc >= 1000) {
+          Game.roomAcc -= 1000;
+          Game.roomLeft -= 1;
+          paintRoomClocks(Math.max(0, Game.roomLeft));
+          if (Game.roomLeft <= 0) timeoutDeath();
+        }
       }
     });
 
@@ -1169,6 +1248,7 @@
     function openStairsToBasement() {
       if (!Game.riteDone || Game.entering) return;
       Game.entering = true;
+      stopRoomClock();
       hideSlate();
       showSlate('THE DESCENT', 'You do not walk down. The vestry lifts away.', document.querySelector('#hot-stairs'));
       creak();
@@ -1191,6 +1271,7 @@
         showSlate('THE BASEMENT', 'Two canvases on the walls. Point a lamp at each at the same time.', document.querySelector('#hot-tablet'));
         document.getElementById('hint').textContent = 'One lamp on each canvas';
         Game.entering = false;
+        startRoomClock(3);
       }, 3800);
     }
 
@@ -1253,6 +1334,7 @@
           Game._countIv = null;
           Game.canvasLock = true;
           paintCanvasCount(0);
+          stopRoomClock();
           horrorFlashThenFall();
         } else paintCanvasCount(Game.canvasN);
       }, 1000);
@@ -1309,6 +1391,7 @@
     function openDoorToLevel2() {
       Game.doorOpen = true;
       Game.entering = true;
+      stopRoomClock();
       hideSlate();
       showSlate('THE THRESHOLD', 'The key turns against a will. The vault remembers the sea.', document.querySelector('#hot-door'));
       creak();
@@ -1337,6 +1420,7 @@
         document.getElementById('hint').textContent = 'Read the altar · kindle throat, angle, drowned, choir';
         showSlate('THE CROOKED VESTRY', 'You did not cross. The room arranged itself about you. Four figures wait to be lit — in the order cut into the altar.', document.querySelector('#hot-altar'));
         Game.entering = false;
+        startRoomClock(2);
       }, 4800);
     }
 
@@ -1666,15 +1750,18 @@
       document.getElementById('boot').style.display = 'none';
     }
     function restartGame() {
-      Game.level = 1;
+      Game.level = 0;
       Game.hasKey = false;
       Game.doorOpen = false;
       Game.entering = false;
       Game.slateOpen = false;
       Game.rite = [];
       Game.riteDone = false;
-      Game.started = true;
+      Game.started = false;
       Game.basementDone = false;
+      Game.roomTicking = false;
+      Game.roomLeft = 0;
+      Game.roomAcc = 0;
       Game.wellCharge = 0;
       Game.canvasLock = false;
       Game.canvasCounting = false;
@@ -1733,11 +1820,20 @@
       }
       document.querySelector('#scene').setAttribute('fog', 'type: linear; color: #0b0c0e; near: 0.5; far: 8.8');
       document.querySelector('#scene').setAttribute('background', 'color: #08090b');
-      setLevelLive(1);
-      document.getElementById('hint').textContent = 'Point until it glows · trigger to read';
-      startAmbience();
+      stopRoomClock();
+      setLevelLive(0);
+      document.getElementById('boot').style.display = '';
+      const inVR = document.getElementById('scene').is && document.getElementById('scene').is('vr-mode');
+      const vrBoot = document.querySelector('#vr-boot');
+      if (inVR && vrBoot) {
+        document.getElementById('boot').style.display = 'none';
+        vrBoot.setAttribute('visible', true);
+        hudClick('hot-descend', true);
+      }
+      document.getElementById('hint').textContent = '';
     }
     function beginVault() {
+      startRoomClock(1);
       Game.started = true;
       hideMenuCards();
       document.getElementById('intro-wrap').classList.remove('on');
